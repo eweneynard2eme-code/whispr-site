@@ -119,12 +119,12 @@ function buildSafeSituations(character: Character): Situation[] {
     })
   }
 
-  // Default situations with exact copy
+  // Default situations with exact copy + emojis
   return [
     {
       id: "free1",
       title: "Late night talk",
-      description: "A calm chat in bed. You can say anything.",
+      description: "Calm, quiet conversation",
       tags: ["calm", "quiet"],
       isPaid: false,
       momentLevel: "free",
@@ -133,7 +133,7 @@ function buildSafeSituations(character: Character): Situation[] {
     {
       id: "private1",
       title: "Private moment",
-      description: "Just you two. He sits closer… and doesn't move away.",
+      description: "Something more intimate",
       tags: ["private", "personal"],
       isPaid: true,
       momentLevel: "private",
@@ -142,7 +142,7 @@ function buildSafeSituations(character: Character): Situation[] {
     {
       id: "intimate1",
       title: "Intimate moment",
-      description: "His voice gets low. The tension starts to build.",
+      description: "His voice gets low",
       tags: ["intimate", "closer"],
       isPaid: true,
       momentLevel: "intimate",
@@ -228,145 +228,35 @@ function isMomentUnlocked(
 }
 
 // ============================================================================
-// COMPONENT: Character Header
+// COMPONENT: Character Header (Minimal)
 // ============================================================================
 
 function CharacterHeader({ character }: { character: SafeCharacter }) {
-  const shortTagline = character.description
-    ? character.description.split(".")[0] || character.description.slice(0, 80)
-    : ""
-
   return (
     <div className="mb-8">
-      <div className="flex items-start justify-between gap-4 mb-4">
-        <div className="flex-1">
-          <Link
-            href="/discover"
-            className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors mb-4"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </Link>
-          <h1 className="text-4xl lg:text-5xl xl:text-6xl font-bold text-white mb-3 tracking-tight">
-            {character.name}
-          </h1>
-          {shortTagline && (
-            <p className="text-lg text-gray-300 mb-4 max-w-2xl leading-relaxed">
-              {shortTagline}
-            </p>
-          )}
-          {character.tags.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {character.tags.slice(0, 6).map((tag, idx) => (
-                <span key={idx} className="text-xs text-gray-400 lowercase tracking-wide">
-                  {tag} ·
-                </span>
-              ))}
-            </div>
-          )}
+      <Link
+        href="/discover"
+        className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors mb-6"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back
+      </Link>
+      <h1 className="text-4xl lg:text-5xl font-bold text-white mb-2 tracking-tight">
+        {character.name}
+      </h1>
+      {character.tags.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {character.tags.slice(0, 4).map((tag, idx) => (
+            <span key={idx} className="text-xs text-gray-400 lowercase">
+              {tag}
+            </span>
+          ))}
         </div>
-      </div>
+      )}
     </div>
   )
 }
 
-// ============================================================================
-// COMPONENT: Tonight's Path Strip
-// ============================================================================
-
-function TonightsPath({
-  activeTier,
-  onTierHover,
-  onTierClick,
-  freeMoments,
-  privateMoments,
-  intimateMoments,
-  exclusiveMoments,
-}: {
-  activeTier: "warm-up" | "closer" | "dark-side" | null
-  onTierHover: (tier: "warm-up" | "closer" | "dark-side" | null) => void
-  onTierClick: (tier: "warm-up" | "closer" | "dark-side") => void
-  freeMoments: Situation[]
-  privateMoments: Situation[]
-  intimateMoments: Situation[]
-  exclusiveMoments: Situation[]
-}) {
-  return (
-    <div className="mb-6">
-      <p className="text-xs text-gray-500/60 text-center mb-3">Choose your intensity</p>
-      <div className="flex items-center justify-center gap-3 text-xs">
-      <div
-        className={cn(
-          "flex items-center gap-2 transition-all duration-300 cursor-pointer",
-          activeTier === "warm-up" ? "scale-110" : "opacity-40",
-        )}
-        onMouseEnter={() => onTierHover("warm-up")}
-        onMouseLeave={() => onTierHover(null)}
-        onClick={() => {
-          const moment = freeMoments[0]
-          if (moment) onTierClick("warm-up")
-        }}
-      >
-        <div
-          className={cn(
-            "w-2 h-2 rounded-full transition-all duration-300",
-            activeTier === "warm-up" ? "scale-125 bg-violet-500" : "bg-violet-400",
-          )}
-        />
-        <span className={cn("transition-colors", activeTier === "warm-up" ? "text-violet-400 font-medium" : "text-gray-500")}>
-          Start gentle
-        </span>
-      </div>
-      <div className={cn("w-6 h-px transition-opacity", activeTier === "warm-up" || activeTier === "closer" ? "bg-gray-600" : "bg-gray-800 opacity-40")} />
-      <div
-        className={cn(
-          "flex items-center gap-2 transition-all duration-300 cursor-pointer",
-          activeTier === "closer" ? "scale-110" : "opacity-40",
-        )}
-        onMouseEnter={() => onTierHover("closer")}
-        onMouseLeave={() => onTierHover(null)}
-        onClick={() => {
-          const moment = intimateMoments[0] || privateMoments[0]
-          if (moment) onTierClick("closer")
-        }}
-      >
-        <div
-          className={cn(
-            "w-2 h-2 rounded-full transition-all duration-300",
-            activeTier === "closer" ? "scale-125 bg-violet-600" : "bg-violet-500",
-          )}
-        />
-        <span className={cn("transition-colors", activeTier === "closer" ? "text-violet-400 font-medium" : "text-gray-500")}>
-          Gets closer
-        </span>
-      </div>
-      <div className={cn("w-6 h-px transition-opacity", activeTier === "closer" || activeTier === "dark-side" ? "bg-gray-600" : "bg-gray-800 opacity-40")} />
-      <div
-        className={cn(
-          "flex items-center gap-2 transition-all duration-300 cursor-pointer",
-          activeTier === "dark-side" ? "scale-110" : "opacity-40",
-        )}
-        onMouseEnter={() => onTierHover("dark-side")}
-        onMouseLeave={() => onTierHover(null)}
-        onClick={() => {
-          const moment = exclusiveMoments[0]
-          if (moment) onTierClick("dark-side")
-        }}
-      >
-        <div
-          className={cn(
-            "w-2 h-2 rounded-full transition-all duration-300",
-            activeTier === "dark-side" ? "scale-125 bg-amber-600" : "bg-amber-500",
-          )}
-        />
-        <span className={cn("transition-colors", activeTier === "dark-side" ? "text-amber-400 font-medium" : "text-gray-500")}>
-          No turning back
-        </span>
-      </div>
-    </div>
-    </div>
-  )
-}
 
 // ============================================================================
 // COMPONENT: Moment Cards
@@ -404,55 +294,8 @@ function MomentsGallery({
 
   return (
     <section className="mb-16">
-      <div className="mb-6">
-        <h2 className="text-3xl font-bold text-white mb-2">Moments</h2>
-        <p className="text-sm text-gray-400">Choose how you want to meet {getFirstName(character.name)}</p>
-      </div>
-
-      <TonightsPath
-        activeTier={
-          activeMoment?.momentLevel === "free"
-            ? "warm-up"
-            : activeMoment?.momentLevel === "private" || activeMoment?.momentLevel === "intimate"
-              ? "closer"
-              : activeMoment?.momentLevel === "exclusive"
-                ? "dark-side"
-                : null
-        }
-        onTierHover={(tier) => {
-          if (tier === "warm-up") {
-            const moment = freeMoments[0]
-            if (moment) onMomentHover(moment)
-          } else if (tier === "closer") {
-            const moment = intimateMoments[0] || privateMoments[0]
-            if (moment) onMomentHover(moment)
-          } else if (tier === "dark-side") {
-            const moment = exclusiveMoments[0]
-            if (moment) onMomentHover(moment)
-          } else {
-            onMomentHover(null)
-          }
-        }}
-        onTierClick={(tier) => {
-          if (tier === "warm-up") {
-            const moment = freeMoments[0]
-            if (moment) onMomentHover(moment)
-          } else if (tier === "closer") {
-            const moment = intimateMoments[0] || privateMoments[0]
-            if (moment) onMomentHover(moment)
-          } else if (tier === "dark-side") {
-            const moment = exclusiveMoments[0]
-            if (moment) onMomentHover(moment)
-          }
-        }}
-        freeMoments={freeMoments}
-        privateMoments={privateMoments}
-        intimateMoments={intimateMoments}
-        exclusiveMoments={exclusiveMoments}
-      />
-
-      {/* First row: Free + Private + Intimate */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6 mb-4 lg:mb-6">
+      {/* First row: Free + Private/Intimate (side by side) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8 mb-8">
         {/* Tier A: Warm-up (Free) */}
         {freeMoments.map((situation) => (
           <MomentCardFree
@@ -466,8 +309,8 @@ function MomentsGallery({
           />
         ))}
 
-        {/* Tier B: Private */}
-        {privateMoments.map((situation) => {
+        {/* Tier B: Private or Intimate (whichever exists first) */}
+        {[...privateMoments, ...intimateMoments].slice(0, 1).map((situation) => {
           const isUnlocked = isMomentUnlocked(situation, character.id, entitlements)
           return (
             <MomentCardPremium
@@ -476,35 +319,7 @@ function MomentsGallery({
               character={character}
               isUnlocked={isUnlocked}
               isActive={activeMoment?.id === situation.id}
-              tier="private"
-              onClick={() => onMomentClick(situation)}
-              onHover={() => onMomentHover(situation)}
-              onHoverEnd={() => onMomentHover(null)}
-              onPlusClick={() => {
-                onMomentClick({
-                  id: "plus",
-                  title: "WHISPR Plus",
-                  description: "",
-                  tags: [],
-                  isPaid: true,
-                  momentLevel: "private",
-                })
-              }}
-            />
-          )
-        })}
-
-        {/* Tier B: Intimate */}
-        {intimateMoments.map((situation) => {
-          const isUnlocked = isMomentUnlocked(situation, character.id, entitlements)
-          return (
-            <MomentCardPremium
-              key={situation.id}
-              situation={situation}
-              character={character}
-              isUnlocked={isUnlocked}
-              isActive={activeMoment?.id === situation.id}
-              tier="intimate"
+              tier={situation.momentLevel === "private" ? "private" : "intimate"}
               onClick={() => onMomentClick(situation)}
               onHover={() => onMomentHover(situation)}
               onHoverEnd={() => onMomentHover(null)}
@@ -523,34 +338,38 @@ function MomentsGallery({
         })}
       </div>
 
-      {/* Second row: Dark side (full-width emphasis) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
-        {exclusiveMoments.map((situation) => {
-          const isUnlocked = isMomentUnlocked(situation, character.id, entitlements)
-          return (
-            <MomentCardDarkSide
-              key={situation.id}
-              situation={situation}
-              character={character}
-              isUnlocked={isUnlocked}
-              isActive={activeMoment?.id === situation.id}
-              onClick={() => onMomentClick(situation)}
-              onHover={() => onMomentHover(situation)}
-              onHoverEnd={() => onMomentHover(null)}
-              onPlusClick={() => {
-                onMomentClick({
-                  id: "plus",
-                  title: "WHISPR Plus",
-                  description: "",
-                  tags: [],
-                  isPaid: true,
-                  momentLevel: "private",
-                })
-              }}
-            />
-          )
-        })}
-      </div>
+      {/* Second row: Dark side (centered, larger) */}
+      {exclusiveMoments.length > 0 && (
+        <div className="flex justify-center">
+          <div className="w-full max-w-4xl">
+            {exclusiveMoments.map((situation) => {
+              const isUnlocked = isMomentUnlocked(situation, character.id, entitlements)
+              return (
+                <MomentCardDarkSide
+                  key={situation.id}
+                  situation={situation}
+                  character={character}
+                  isUnlocked={isUnlocked}
+                  isActive={activeMoment?.id === situation.id}
+                  onClick={() => onMomentClick(situation)}
+                  onHover={() => onMomentHover(situation)}
+                  onHoverEnd={() => onMomentHover(null)}
+                  onPlusClick={() => {
+                    onMomentClick({
+                      id: "plus",
+                      title: "WHISPR Plus",
+                      description: "",
+                      tags: [],
+                      isPaid: true,
+                      momentLevel: "private",
+                    })
+                  }}
+                />
+              )
+            })}
+          </div>
+        </div>
+      )}
     </section>
   )
 }
@@ -582,19 +401,19 @@ function MomentCardFree({
   const handleCardClick = (e: React.MouseEvent) => {
     if (isMobile) {
       e.preventDefault()
-      onHover() // Select on mobile tap
+      onHover()
     } else {
-      onClick() // Direct action on desktop
+      onClick()
     }
   }
 
   return (
     <div
       className={cn(
-        "group relative h-[440px] lg:h-[520px] rounded-2xl overflow-hidden border border-white/10 bg-[#1a1a1a] transition-all duration-500 cursor-pointer",
+        "group relative h-[520px] lg:h-[580px] rounded-3xl overflow-hidden transition-all duration-500 cursor-pointer",
         isActive
-          ? "scale-[1.02] border-violet-500/50 shadow-2xl shadow-violet-500/20 z-10"
-          : "opacity-65 scale-[0.97] lg:blur-[1px] hover:opacity-100 hover:scale-[1.0] hover:blur-0 hover:border-white/20",
+          ? "scale-[1.03] shadow-2xl shadow-violet-500/30 z-10"
+          : "opacity-50 scale-[0.98] lg:blur-[2px] hover:opacity-80 hover:scale-[1.0] hover:blur-0",
       )}
       onClick={handleCardClick}
       onMouseEnter={onHover}
@@ -607,39 +426,32 @@ function MomentCardFree({
             alt={situation.title || "Moment"}
             fill
             className="object-cover transition-transform duration-700 group-hover:scale-110"
-            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            sizes="(max-width: 768px) 100vw, 50vw"
             loading="lazy"
             onError={() => setImageError(true)}
           />
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-violet-600/80 to-purple-900/80" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
       </div>
 
-      <div className="absolute top-3 left-3 z-20">
-        <span className="px-2.5 py-1 rounded-full bg-violet-500/20 backdrop-blur-sm border border-violet-500/30 text-[10px] font-medium text-violet-300">
-          Start gentle
-        </span>
-      </div>
-
-      <div className="absolute bottom-0 left-0 right-0 p-6 z-10 bg-gradient-to-t from-black/75 via-black/60 to-transparent">
-        <h3 className="text-xl font-semibold text-white mb-1.5 line-clamp-1 pr-4">
-          {situation.title || "Late night talk"}
+      <div className="absolute bottom-0 left-0 right-0 p-8 z-10 bg-gradient-to-t from-black/90 via-black/70 to-transparent">
+        <h3 className="text-2xl font-bold text-white mb-2 line-clamp-1">
+          {situation.title || "Late night talk"} 🌙
         </h3>
-        <p className="text-sm text-gray-300 mb-4 line-clamp-1">
-          {situation.description || "A calm chat in bed. You can say anything."}
+        <p className="text-base text-gray-200 mb-6 line-clamp-1">
+          {situation.description || "Calm, quiet conversation"}
         </p>
         <button
           onClick={(e) => {
             e.stopPropagation()
             onClick()
           }}
-          className="w-full h-12 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-semibold text-base transition-colors mb-1.5 shadow-lg shadow-violet-500/30"
+          className="w-full h-14 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold text-lg transition-colors shadow-xl shadow-violet-500/40"
         >
           Start
         </button>
-        <p className="text-[10px] text-violet-400/60 text-center">Instant access • Secure checkout</p>
       </div>
     </div>
   )
@@ -673,10 +485,11 @@ function MomentCardPremium({
   const price = formatPrice(MOMENT_PRICES[situation.momentLevel])
   
   const isPrivate = tier === "private"
+  const emoji = isPrivate ? "😳" : "😳💗"
   const title = isPrivate ? "Private moment" : "Intimate moment"
   const description = isPrivate
-    ? "Just you two. He sits closer… and doesn't move away."
-    : "His voice gets low. The tension starts to build."
+    ? "Something more intimate"
+    : "His voice gets low"
 
   useEffect(() => {
     setIsMobile(window.innerWidth < 768)
@@ -685,29 +498,28 @@ function MomentCardPremium({
   const handleCardClick = (e: React.MouseEvent) => {
     if (isMobile) {
       e.preventDefault()
-      onHover() // Select on mobile tap
+      onHover()
     } else {
-      onClick() // Direct action on desktop
+      onClick()
     }
   }
+
+  const glowColor = isPrivate ? "violet" : "pink"
 
   return (
     <div
       className={cn(
-        "group relative h-[440px] lg:h-[520px] rounded-2xl overflow-hidden border transition-all duration-500 cursor-pointer",
+        "group relative h-[520px] lg:h-[580px] rounded-3xl overflow-hidden transition-all duration-500 cursor-pointer",
         isUnlocked
-          ? "bg-green-500/5 border-green-500/30"
+          ? "bg-green-500/5"
           : isPrivate
-            ? "bg-[#1a1a1a] border-violet-500/30"
-            : "bg-[#1a1a1a] border-pink-500/30",
+            ? "bg-[#1a1a1a]"
+            : "bg-[#1a1a1a]",
         isActive
           ? isPrivate
-            ? "scale-[1.02] border-violet-500/50 shadow-2xl shadow-violet-500/20 z-10"
-            : "scale-[1.02] border-pink-500/50 shadow-2xl shadow-pink-500/20 z-10"
-          : "opacity-65 scale-[0.97] lg:blur-[1px] hover:opacity-100 hover:scale-[1.0] hover:blur-0",
-        isPrivate
-          ? "hover:border-violet-500/50"
-          : "hover:border-pink-500/50",
+            ? "scale-[1.03] shadow-2xl shadow-violet-500/40 z-10"
+            : "scale-[1.03] shadow-2xl shadow-pink-500/40 z-10"
+          : "opacity-50 scale-[0.98] lg:blur-[2px] hover:opacity-80 hover:scale-[1.0] hover:blur-0",
       )}
       onClick={handleCardClick}
       onMouseEnter={onHover}
@@ -720,58 +532,40 @@ function MomentCardPremium({
             alt={title}
             fill
             className="object-cover transition-transform duration-700 group-hover:scale-110"
-            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            sizes="(max-width: 768px) 100vw, 50vw"
             loading="lazy"
             onError={() => setImageError(true)}
           />
         ) : (
           <div className={cn("absolute inset-0 bg-gradient-to-br", isPrivate ? "from-violet-600/80 to-purple-900/80" : "from-pink-600/80 to-rose-900/80")} />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/50 to-black/20" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/60 to-black/30" />
         {!isUnlocked && (
           <div
             className={cn(
               "absolute inset-0 bg-gradient-to-br",
-              isPrivate ? "from-violet-900/40 via-purple-900/30 to-transparent" : "from-pink-900/40 via-rose-900/30 to-transparent",
+              isPrivate ? "from-violet-900/50 via-purple-900/40 to-transparent" : "from-pink-900/50 via-rose-900/40 to-transparent",
             )}
           />
         )}
       </div>
 
-      <div className={cn("absolute top-3 left-3 z-20")}>
-        <span
-          className={cn(
-            "px-2.5 py-1 rounded-full backdrop-blur-sm border text-[10px] font-medium",
-            isPrivate
-              ? "bg-violet-500/20 border-violet-500/30 text-violet-300"
-              : "bg-pink-500/20 border-pink-500/30 text-pink-300",
-          )}
-        >
-          Gets closer
-        </span>
-      </div>
-
       {!isUnlocked && (
-        <div className="absolute top-3 right-3 z-20 flex items-center gap-2">
-          <span
-            className={cn(
-              "px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-sm border border-white/20 text-[10px] font-medium whitespace-nowrap",
-              isPrivate ? "text-violet-300/90" : "text-pink-300/90",
-            )}
-          >
+        <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
+          <span className="px-3 py-1 rounded-full bg-black/80 backdrop-blur-sm border border-white/20 text-xs font-medium text-white">
             Locked
           </span>
-          <div className="w-6 h-6 rounded-full bg-black/70 backdrop-blur-sm flex items-center justify-center border border-white/20 shrink-0">
-            <Lock className={cn("h-3 w-3", isPrivate ? "text-violet-400" : "text-pink-400")} />
+          <div className="w-7 h-7 rounded-full bg-black/80 backdrop-blur-sm flex items-center justify-center border border-white/20 shrink-0">
+            <Lock className={cn("h-4 w-4", isPrivate ? "text-violet-400" : "text-pink-400")} />
           </div>
         </div>
       )}
 
-      <div className="absolute bottom-0 left-0 right-0 p-6 z-10 bg-gradient-to-t from-black/75 via-black/60 to-transparent">
-        <h3 className="text-xl font-semibold text-white mb-1.5 line-clamp-1 pr-20">
-          {situation.title || title}
+      <div className="absolute bottom-0 left-0 right-0 p-8 z-10 bg-gradient-to-t from-black/95 via-black/80 to-transparent">
+        <h3 className="text-2xl font-bold text-white mb-2 line-clamp-1">
+          {situation.title || title} {emoji}
         </h3>
-        <p className="text-sm text-gray-300 mb-4 line-clamp-1">
+        <p className="text-base text-gray-200 mb-6 line-clamp-1">
           {situation.description || description}
         </p>
         {isUnlocked ? (
@@ -780,47 +574,32 @@ function MomentCardPremium({
               e.stopPropagation()
               onClick()
             }}
-            className="w-full h-12 rounded-xl bg-green-600 hover:bg-green-700 text-white font-semibold text-base transition-colors mb-1.5 shadow-lg shadow-green-500/30"
+            className="w-full h-14 rounded-xl bg-green-600 hover:bg-green-700 text-white font-bold text-lg transition-colors shadow-xl shadow-green-500/40"
           >
             Start
           </button>
         ) : (
-          <>
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                onClick()
-              }}
-              className={cn(
-                "w-full h-12 rounded-xl font-semibold text-base transition-colors mb-2 shadow-lg",
-                isPrivate
-                  ? "bg-violet-600 hover:bg-violet-700 text-white shadow-violet-500/30"
-                  : "bg-pink-600 hover:bg-pink-700 text-white shadow-pink-500/30",
-              )}
-            >
-              Unlock now — {price}
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                onPlusClick()
-              }}
-              className={cn(
-                "text-xs text-center transition-colors mb-1",
-                isPrivate ? "text-violet-400/80 hover:text-violet-400" : "text-pink-400/80 hover:text-pink-400",
-              )}
-            >
-              Get WHISPR+ — unlock all tonight (Best value)
-            </button>
-            <p className="text-[10px] text-gray-400 text-center">Instant access • Secure checkout</p>
-          </>
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onClick()
+            }}
+            className={cn(
+              "w-full h-14 rounded-xl font-bold text-lg transition-colors shadow-xl",
+              isPrivate
+                ? "bg-violet-600 hover:bg-violet-700 text-white shadow-violet-500/40"
+                : "bg-pink-600 hover:bg-pink-700 text-white shadow-pink-500/40",
+            )}
+          >
+            Unlock now — {price}
+          </button>
         )}
       </div>
     </div>
   )
 }
 
-// Dark side moment card (full-width emphasis)
+// Dark side moment card (centered, larger)
 function MomentCardDarkSide({
   situation,
   character,
@@ -852,22 +631,22 @@ function MomentCardDarkSide({
   const handleCardClick = (e: React.MouseEvent) => {
     if (isMobile) {
       e.preventDefault()
-      onHover() // Select on mobile tap
+      onHover()
     } else {
-      onClick() // Direct action on desktop
+      onClick()
     }
   }
 
   return (
     <div
       className={cn(
-        "group relative h-[440px] lg:h-[520px] lg:col-span-3 rounded-2xl overflow-hidden border-2 transition-all duration-500 cursor-pointer",
+        "group relative h-[520px] lg:h-[580px] rounded-3xl overflow-hidden border-2 transition-all duration-500 cursor-pointer",
         isUnlocked
           ? "bg-green-500/5 border-green-500/30"
           : "bg-[#0a0a0a] border-amber-500/40 animate-pulse-ring",
         isActive
-          ? "scale-[1.02] border-amber-500/60 shadow-2xl shadow-amber-500/30 z-10"
-          : "opacity-65 scale-[0.97] lg:blur-[1px] hover:opacity-100 hover:scale-[1.0] hover:blur-0 hover:border-amber-500/60",
+          ? "scale-[1.03] border-amber-500/60 shadow-2xl shadow-amber-500/40 z-10"
+          : "opacity-50 scale-[0.98] lg:blur-[2px] hover:opacity-80 hover:scale-[1.0] hover:blur-0 hover:border-amber-500/60",
       )}
       onClick={handleCardClick}
       onMouseEnter={onHover}
@@ -917,41 +696,30 @@ function MomentCardDarkSide({
         )}
       </div>
 
-      <div className="absolute top-3 left-3 z-30 flex items-center gap-2">
-        <span className="px-2.5 py-1 rounded-full bg-amber-500/20 backdrop-blur-sm border border-amber-500/40 text-[10px] font-bold text-amber-300">
-          No turning back
-        </span>
-        {!isUnlocked && (
-          <span className="px-2 py-0.5 rounded-full bg-red-500/20 backdrop-blur-sm border border-red-500/30 text-[10px] font-medium text-red-300">
-            Not for everyone
-          </span>
-        )}
-      </div>
-
       {!isUnlocked && (
-        <div className="absolute top-3 right-3 z-30 flex items-center gap-2">
-          <span className="px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-sm border border-white/20 text-[10px] font-medium text-amber-300/90 whitespace-nowrap">
+        <div className="absolute top-4 right-4 z-30 flex items-center gap-2">
+          <span className="px-3 py-1 rounded-full bg-black/80 backdrop-blur-sm border border-white/20 text-xs font-medium text-white">
             Locked
           </span>
-          <div className="w-6 h-6 rounded-full bg-black/70 backdrop-blur-sm flex items-center justify-center border border-white/20 shrink-0">
-            <Lock className="h-3 w-3 text-amber-400" />
+          <div className="w-7 h-7 rounded-full bg-black/80 backdrop-blur-sm flex items-center justify-center border border-white/20 shrink-0">
+            <Lock className="h-4 w-4 text-amber-400" />
           </div>
         </div>
       )}
 
-      <div className="absolute bottom-0 left-0 right-0 p-6 z-10 bg-gradient-to-t from-black/75 via-black/60 to-transparent">
-        <h3 className="text-xl font-semibold text-white mb-1.5 line-clamp-1 pr-20">
-          {situation.title || "Dark side"}
+      <div className="absolute bottom-0 left-0 right-0 p-8 z-10 bg-gradient-to-t from-black/95 via-black/80 to-transparent">
+        {!isUnlocked && (
+          <p className="text-xs text-red-400/90 mb-2 font-semibold">Not for everyone.</p>
+        )}
+        <h3 className="text-2xl font-bold text-white mb-2 line-clamp-1">
+          {situation.title || "Dark side"} 🔥🖤
         </h3>
         {!isUnlocked && (
-          <>
-            <p className="text-[10px] text-red-400/80 mb-1.5 font-medium">Not for everyone.</p>
-            <p className="text-xs text-amber-400/80 mb-2 font-mono tracking-widest leading-relaxed">
-              He whispers: "•••• •••• •••"
-            </p>
-          </>
+          <p className="text-sm text-amber-400/90 mb-3 font-mono tracking-widest">
+            He whispers: "•••• •••• •••"
+          </p>
         )}
-        <p className="text-sm text-gray-300 mb-4 line-clamp-1">
+        <p className="text-base text-gray-200 mb-6 line-clamp-1">
           {situation.description || "This goes further. Once you open it… you can't unsee it."}
         </p>
         {isUnlocked ? (
@@ -960,32 +728,20 @@ function MomentCardDarkSide({
               e.stopPropagation()
               onClick()
             }}
-            className="w-full h-12 rounded-xl bg-green-600 hover:bg-green-700 text-white font-semibold text-base transition-colors mb-1.5 shadow-lg shadow-green-500/30"
+            className="w-full h-14 rounded-xl bg-green-600 hover:bg-green-700 text-white font-bold text-lg transition-colors shadow-xl shadow-green-500/40"
           >
             Start
           </button>
         ) : (
-          <>
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                onClick()
-              }}
-              className="w-full h-12 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-semibold text-base transition-colors mb-2 shadow-lg shadow-amber-500/30"
-            >
-              Unlock now — {price}
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                onPlusClick()
-              }}
-              className="text-xs text-amber-400/80 hover:text-amber-400 text-center transition-colors mb-1"
-            >
-              Get WHISPR+ — unlock all tonight (Best value)
-            </button>
-            <p className="text-[10px] text-gray-400 text-center">Instant access • Secure checkout</p>
-          </>
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onClick()
+            }}
+            className="w-full h-14 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-lg transition-colors shadow-xl shadow-amber-500/40"
+          >
+            Unlock dark side — {price}
+          </button>
         )}
       </div>
     </div>
@@ -1014,46 +770,33 @@ function StickyCTABar({
   if (!activeMoment) return null
 
   const price = formatPrice(MOMENT_PRICES[activeMoment.momentLevel])
+  const isDarkSide = activeMoment.momentLevel === "exclusive"
+  const ctaText = isDarkSide && !isUnlocked
+    ? `Unlock dark side — ${price}`
+    : isUnlocked
+      ? `Start ${activeMoment.title || "moment"}`
+      : `Unlock ${activeMoment.title || "moment"} — ${price}`
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 border-t backdrop-blur-md transition-colors border-violet-500/30 bg-[#0a0a0a]/95">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+    <div className="fixed bottom-0 left-0 right-0 z-50 border-t backdrop-blur-md border-violet-500/30 bg-[#0a0a0a]/98">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className="flex items-center justify-between gap-4">
           <div className="flex-1 min-w-0">
-            <span className="text-sm sm:text-base font-semibold text-white line-clamp-1">
-              {isUnlocked
-                ? `Start ${activeMoment.title || "moment"}`
-                : `Unlock ${activeMoment.title || "moment"} — ${price}`}
+            <span className="text-base font-bold text-white line-clamp-1">
+              {ctaText}
             </span>
-            <p className="text-[10px] sm:text-xs text-gray-400 mt-1">Unlock in seconds • Instant access</p>
           </div>
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                onClick()
-              }}
-              disabled={isOpeningCheckout}
-              className="px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg bg-violet-600 hover:bg-violet-700 text-white font-medium text-sm sm:text-base transition-colors disabled:opacity-50"
-            >
-              {isOpeningCheckout ? "Opening checkout..." : isUnlocked ? "Start" : "Unlock now"}
-            </button>
-          </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onClick()
+            }}
+            disabled={isOpeningCheckout}
+            className="px-8 py-3 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold text-base transition-colors disabled:opacity-50 shadow-xl shadow-violet-500/40"
+          >
+            {isOpeningCheckout ? "Opening..." : isUnlocked ? "Start" : "Unlock now"}
+          </button>
         </div>
-        {!isUnlocked && activeMoment.momentLevel !== "free" && (
-          <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-white/5">
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                onPlusClick()
-              }}
-              disabled={isOpeningCheckout}
-              className="text-xs text-violet-400/80 hover:text-violet-400 transition-colors disabled:opacity-50"
-            >
-              Get WHISPR+ — unlock all tonight
-            </button>
-          </div>
-        )}
       </div>
     </div>
   )
@@ -1214,36 +957,36 @@ export default function CharacterPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
-      {/* Main content */}
-      <div className="flex-1 overflow-y-auto pb-32 sm:pb-36">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-6 lg:py-10">
-          <CharacterHeader character={character} />
+        {/* Main content */}
+        <div className="flex-1 overflow-y-auto pb-24 sm:pb-28">
+          <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-8 lg:py-12">
+            <CharacterHeader character={character} />
 
-          <MomentsGallery
-            character={character}
-            entitlements={entitlements}
-            activeMoment={activeMoment}
-            onMomentClick={handleMomentClick}
-            onMomentHover={setActiveMoment}
-          />
+            <MomentsGallery
+              character={character}
+              entitlements={entitlements}
+              activeMoment={activeMoment}
+              onMomentClick={handleMomentClick}
+              onMomentHover={setActiveMoment}
+            />
 
-          {/* Save button */}
-          <div className="flex items-center gap-3 pt-6">
-            <button
-              onClick={() => userStore.toggleFavorite(character.id)}
-              className={cn(
-                "flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm transition-colors",
-                isFavorite
-                  ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
-                  : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white border border-white/10",
-              )}
-            >
-              <Star className={cn("h-4 w-4", isFavorite && "fill-yellow-400")} />
-              {isFavorite ? "Saved" : "Save"}
-            </button>
+            {/* Save button */}
+            <div className="flex items-center gap-3 pt-8">
+              <button
+                onClick={() => userStore.toggleFavorite(character.id)}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm transition-colors",
+                  isFavorite
+                    ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
+                    : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white border border-white/10",
+                )}
+              >
+                <Star className={cn("h-4 w-4", isFavorite && "fill-yellow-400")} />
+                {isFavorite ? "Saved" : "Save"}
+              </button>
+            </div>
           </div>
         </div>
-      </div>
 
       {/* Sticky CTA bar */}
       <StickyCTABar
