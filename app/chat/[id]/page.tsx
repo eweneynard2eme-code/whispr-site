@@ -15,7 +15,6 @@ import { getOrCreateChatSession, loadChatMessages, saveChatMessage, verifyAuth }
 import { useAuth } from "@/hooks/use-auth"
 import { useAuthModal } from "@/components/auth-modal-provider"
 import { openStripeCheckoutWithPurchaseType } from "@/lib/paywall"
-import { openStripeCheckoutWithPurchaseType } from "@/lib/paywall"
 
 interface Message {
   id: string
