@@ -228,105 +228,43 @@ function isMomentUnlocked(
 }
 
 // ============================================================================
-// COMPONENT: Hero Poster (Left Side)
+// COMPONENT: Character Header
 // ============================================================================
 
-function HeroPoster({ character }: { character: SafeCharacter }) {
-  const [imageError, setImageError] = useState(false)
-  const [scrollY, setScrollY] = useState(0)
-  const gradient = getCharacterGradient(character.name)
+function CharacterHeader({ character }: { character: SafeCharacter }) {
   const shortTagline = character.description
-    ? character.description.split(".")[0] || character.description.slice(0, 60)
+    ? character.description.split(".")[0] || character.description.slice(0, 80)
     : ""
 
-  useEffect(() => {
-    const handleScroll = () => {
-      const scrollContainer = document.querySelector('[data-scroll-container]')
-      if (scrollContainer) {
-        setScrollY(scrollContainer.scrollTop || window.scrollY)
-      } else {
-        setScrollY(window.scrollY)
-      }
-    }
-    const scrollContainer = document.querySelector('[data-scroll-container]')
-    if (scrollContainer) {
-      scrollContainer.addEventListener('scroll', handleScroll)
-      return () => scrollContainer.removeEventListener('scroll', handleScroll)
-    } else {
-      window.addEventListener('scroll', handleScroll)
-      return () => window.removeEventListener('scroll', handleScroll)
-    }
-  }, [])
-
-  const parallaxScale = 1 + scrollY * 0.0001
-  const parallaxTranslate = scrollY * 0.1
-
   return (
-    <div className="hidden lg:flex lg:w-[55%] xl:w-[60%] relative min-h-screen overflow-hidden">
-      <Link
-        href="/discover"
-        className="absolute top-6 left-6 z-30 flex items-center gap-2 text-sm text-white/80 hover:text-white transition-colors"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back
-      </Link>
-
-      {/* Blurred background image with parallax */}
-      <div className="absolute inset-0">
-        {!imageError && character.image ? (
-          <Image
-            src={character.image}
-            alt={character.name}
-            fill
-            className="object-cover blur-[2px]"
-            priority
-            onError={() => setImageError(true)}
-            style={{
-              transform: `scale(${parallaxScale}) translateY(${parallaxTranslate}px)`,
-              transition: 'transform 0.1s ease-out',
-            }}
-          />
-        ) : (
-          <div className={cn("absolute inset-0 bg-gradient-to-br", gradient)} />
-        )}
-        {/* Vignette overlay */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background: "radial-gradient(circle at center, transparent 0%, transparent 30%, rgba(0,0,0,0.7) 100%)",
-          }}
-        />
-        {/* Dark gradient bottom */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
-        {/* Subtle grain overlay */}
-        <div
-          className="absolute inset-0 opacity-[0.03]"
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
-            mixBlendMode: "overlay",
-          }}
-        />
-      </div>
-
-      {/* Bottom-left text */}
-      <div className="absolute bottom-0 left-0 right-0 p-8 lg:p-12 z-20">
-        <h1 className="text-4xl lg:text-5xl xl:text-6xl font-bold text-white mb-3 tracking-tight line-clamp-2">
-          {character.name}
-        </h1>
-        {shortTagline && (
-          <p className="text-lg lg:text-xl text-gray-300 mb-4 max-w-xl leading-relaxed line-clamp-2">
-            {shortTagline}
-          </p>
-        )}
-        {character.tags.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {character.tags.slice(0, 4).map((tag, idx) => (
-              <span key={idx} className="text-xs text-gray-400 lowercase tracking-wide">
-                {tag} ·
-              </span>
-            ))}
-          </div>
-        )}
+    <div className="mb-8">
+      <div className="flex items-start justify-between gap-4 mb-4">
+        <div className="flex-1">
+          <Link
+            href="/discover"
+            className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors mb-4"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Link>
+          <h1 className="text-4xl lg:text-5xl xl:text-6xl font-bold text-white mb-3 tracking-tight">
+            {character.name}
+          </h1>
+          {shortTagline && (
+            <p className="text-lg text-gray-300 mb-4 max-w-2xl leading-relaxed">
+              {shortTagline}
+            </p>
+          )}
+          {character.tags.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {character.tags.slice(0, 6).map((tag, idx) => (
+                <span key={idx} className="text-xs text-gray-400 lowercase tracking-wide">
+                  {tag} ·
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -513,7 +451,8 @@ function MomentsGallery({
         exclusiveMoments={exclusiveMoments}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
+      {/* First row: Free + Private + Intimate */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6 mb-4 lg:mb-6">
         {/* Tier A: Warm-up (Free) */}
         {freeMoments.map((situation) => (
           <MomentCardFree
@@ -582,8 +521,10 @@ function MomentsGallery({
             />
           )
         })}
+      </div>
 
-        {/* Tier C: Dark side */}
+      {/* Second row: Dark side (full-width emphasis) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
         {exclusiveMoments.map((situation) => {
           const isUnlocked = isMomentUnlocked(situation, character.id, entitlements)
           return (
@@ -666,7 +607,7 @@ function MomentCardFree({
             alt={situation.title || "Moment"}
             fill
             className="object-cover transition-transform duration-700 group-hover:scale-110"
-            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 50vw"
+            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
             loading="lazy"
             onError={() => setImageError(true)}
           />
@@ -779,7 +720,7 @@ function MomentCardPremium({
             alt={title}
             fill
             className="object-cover transition-transform duration-700 group-hover:scale-110"
-            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 50vw"
+            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
             loading="lazy"
             onError={() => setImageError(true)}
           />
@@ -879,7 +820,7 @@ function MomentCardPremium({
   )
 }
 
-// Dark side moment card
+// Dark side moment card (full-width emphasis)
 function MomentCardDarkSide({
   situation,
   character,
@@ -920,7 +861,7 @@ function MomentCardDarkSide({
   return (
     <div
       className={cn(
-        "group relative h-[440px] lg:h-[520px] rounded-2xl overflow-hidden border-2 transition-all duration-500 cursor-pointer",
+        "group relative h-[440px] lg:h-[520px] lg:col-span-3 rounded-2xl overflow-hidden border-2 transition-all duration-500 cursor-pointer",
         isUnlocked
           ? "bg-green-500/5 border-green-500/30"
           : "bg-[#0a0a0a] border-amber-500/40 animate-pulse-ring",
@@ -946,7 +887,7 @@ function MomentCardDarkSide({
               "object-cover transition-all duration-700",
               isUnlocked ? "group-hover:scale-110" : "scale-110 blur-[24px] group-hover:blur-[16px]",
             )}
-            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 50vw"
+            sizes="(max-width: 768px) 100vw, 100vw"
             loading="lazy"
             onError={() => setImageError(true)}
           />
@@ -1272,49 +1213,12 @@ export default function CharacterPage() {
   const isFavorite = userStore.isFavorite(character.id)
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] flex">
-      {/* Left: Hero Poster (Desktop only) */}
-      <HeroPoster character={character} />
+    <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
+      {/* Main content */}
+      <div className="flex-1 overflow-y-auto pb-32 sm:pb-36">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-6 lg:py-10">
+          <CharacterHeader character={character} />
 
-      {/* Right: Content Area */}
-      <div className="flex-1 flex flex-col min-h-screen overflow-hidden lg:pl-0">
-        {/* Mobile header */}
-        <div className="lg:hidden px-4 py-4 flex items-center gap-3">
-          <Link
-            href="/discover"
-            className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-white transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </Link>
-        </div>
-
-        {/* Mobile hero */}
-        <div className="lg:hidden relative w-full aspect-[3/4] max-w-xs mx-auto mb-6 rounded-2xl overflow-hidden">
-          <div className="absolute inset-0">
-            {character.image ? (
-              <Image
-                src={character.image}
-                alt={character.name}
-                fill
-                className="object-cover"
-                priority
-              />
-            ) : (
-              <div className={cn("absolute inset-0 bg-gradient-to-br", getCharacterGradient(character.name))} />
-            )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-          </div>
-          <div className="absolute bottom-0 left-0 right-0 p-6 z-10">
-            <h1 className="text-3xl font-bold text-white mb-2">{character.name}</h1>
-            {character.description && (
-              <p className="text-sm text-gray-300 line-clamp-2">{character.description}</p>
-            )}
-          </div>
-        </div>
-
-        {/* Main content */}
-        <div className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-6 lg:py-8 pb-32 sm:pb-36" data-scroll-container>
           <MomentsGallery
             character={character}
             entitlements={entitlements}
@@ -1324,7 +1228,7 @@ export default function CharacterPage() {
           />
 
           {/* Save button */}
-          <div className="flex items-center gap-3 pt-4">
+          <div className="flex items-center gap-3 pt-6">
             <button
               onClick={() => userStore.toggleFavorite(character.id)}
               className={cn(
