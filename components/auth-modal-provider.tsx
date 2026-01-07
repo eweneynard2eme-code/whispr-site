@@ -6,6 +6,8 @@ import { useAuth } from "@/hooks/use-auth"
 import { useRouter } from "next/navigation"
 import { openStripeCheckoutWithPurchaseType } from "@/lib/paywall"
 import { getMomentProduct, getPlusProduct } from "@/lib/stripe-products"
+import { safeParse } from "@/lib/utils"
+import { toast } from "@/hooks/use-toast"
 
 export type AuthIntent =
   | {
@@ -35,10 +37,21 @@ const INTENT_STORAGE_KEY = "whispr_auth_intent"
 
 function storeIntent(intent: AuthIntent | null) {
   if (typeof window === "undefined") return
-  if (intent) {
-    localStorage.setItem(INTENT_STORAGE_KEY, JSON.stringify(intent))
-  } else {
-    localStorage.removeItem(INTENT_STORAGE_KEY)
+  try {
+    if (intent) {
+      // Never store undefined values
+      const serialized = JSON.stringify(intent)
+      if (serialized && serialized !== "undefined") {
+        localStorage.setItem(INTENT_STORAGE_KEY, serialized)
+      }
+    } else {
+      localStorage.removeItem(INTENT_STORAGE_KEY)
+    }
+  } catch (error) {
+    // Silently fail - localStorage might be disabled or full
+    if (process.env.NODE_ENV === "development") {
+      console.warn("[AUTH] Failed to store intent:", error)
+    }
   }
 }
 
@@ -46,8 +59,16 @@ function getStoredIntent(): AuthIntent | null {
   if (typeof window === "undefined") return null
   try {
     const stored = localStorage.getItem(INTENT_STORAGE_KEY)
-    return stored ? JSON.parse(stored) : null
+    if (!stored) return null
+    // Use safeParse which will remove corrupted values
+    return safeParse<AuthIntent>(stored, INTENT_STORAGE_KEY)
   } catch {
+    // Fallback: remove corrupted value
+    try {
+      localStorage.removeItem(INTENT_STORAGE_KEY)
+    } catch {
+      // Ignore
+    }
     return null
   }
 }
@@ -63,28 +84,48 @@ export function AuthModalProvider({ children }: { children: ReactNode }) {
     if (!isLoading && isLoggedIn && currentIntent) {
       console.log("[AUTH] Executing stored intent after login:", currentIntent)
 
+      // Clear intent immediately to prevent loops
+      const intentToExecute = currentIntent
+      setCurrentIntent(null)
+      storeIntent(null)
+
       const executeIntent = async () => {
         try {
-          if (currentIntent.type === "open_character") {
-            const scrollTo = currentIntent.scrollTo || "moments"
-            console.log("[AUTH] Opening character:", currentIntent.characterId, "scrollTo:", scrollTo)
-            router.push(`/s/${currentIntent.characterId}?scrollTo=${scrollTo}`)
-          } else if (currentIntent.type === "checkout") {
-            console.log("[AUTH] Opening checkout with purchaseType:", currentIntent.purchaseType)
+          if (intentToExecute.type === "open_character") {
+            const scrollTo = intentToExecute.scrollTo || "moments"
+            const characterId = intentToExecute.characterId
+            if (!characterId) {
+              throw new Error("Missing character ID")
+            }
+            console.log("[AUTH] Opening character:", characterId, "scrollTo:", scrollTo)
+            router.push(`/s/${characterId}?scrollTo=${scrollTo}`)
+          } else if (intentToExecute.type === "checkout") {
+            console.log("[AUTH] Opening checkout with purchaseType:", intentToExecute.purchaseType)
             await openStripeCheckoutWithPurchaseType({
-              purchaseType: currentIntent.purchaseType,
-              characterId: currentIntent.characterId,
-              situationId: currentIntent.situationId,
-              momentLevel: currentIntent.momentLevel,
-              mediaId: currentIntent.mediaId,
+              purchaseType: intentToExecute.purchaseType,
+              characterId: intentToExecute.characterId,
+              situationId: intentToExecute.situationId,
+              momentLevel: intentToExecute.momentLevel,
+              mediaId: intentToExecute.mediaId,
             })
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error("[AUTH] Failed to execute intent:", error)
-        } finally {
-          // Clear intent after execution
-          setCurrentIntent(null)
-          storeIntent(null)
+          // Show user-friendly error
+          toast({
+            title: "Something went wrong",
+            description: error?.message || "Unable to complete your request. Please try again.",
+            variant: "destructive",
+          })
+          // Fallback to safe route
+          try {
+            router.push("/discover")
+          } catch {
+            // If router fails, try window.location as last resort
+            if (typeof window !== "undefined") {
+              window.location.href = "/discover"
+            }
+          }
         }
       }
 
@@ -94,15 +135,31 @@ export function AuthModalProvider({ children }: { children: ReactNode }) {
     }
   }, [isLoggedIn, isLoading, currentIntent, router])
 
-  // Restore intent from localStorage on mount
+  // Restore intent from localStorage on mount (client-side only)
   useEffect(() => {
-    const stored = getStoredIntent()
-    if (stored) {
-      setCurrentIntent(stored)
-      // If already logged in, execute immediately
-      if (!isLoading && isLoggedIn) {
-        // Intent will be executed by the effect above
+    if (typeof window === "undefined") return
+
+    try {
+      const stored = getStoredIntent()
+      if (stored) {
+        // Validate stored intent structure
+        if (
+          stored &&
+          typeof stored === "object" &&
+          ("type" in stored) &&
+          (stored.type === "open_character" || stored.type === "checkout")
+        ) {
+          setCurrentIntent(stored)
+          // If already logged in, intent will be executed by the effect above
+        } else {
+          // Invalid intent structure - remove it
+          storeIntent(null)
+        }
       }
+    } catch (error) {
+      // If anything fails, clear corrupted intent
+      console.error("[AUTH] Failed to restore intent:", error)
+      storeIntent(null)
     }
   }, [isLoading, isLoggedIn])
 
@@ -112,17 +169,37 @@ export function AuthModalProvider({ children }: { children: ReactNode }) {
       console.log("[AUTH] User is logged in, skipping modal. Intent:", intent)
       // Execute intent directly if provided
       if (intent) {
-        if (intent.type === "open_character") {
-          const scrollTo = intent.scrollTo || "moments"
-          router.push(`/s/${intent.characterId}?scrollTo=${scrollTo}`)
-        } else if (intent.type === "checkout") {
-          openStripeCheckoutWithPurchaseType({
-            purchaseType: intent.purchaseType,
-            characterId: intent.characterId,
-            situationId: intent.situationId,
-            momentLevel: intent.momentLevel,
-            mediaId: intent.mediaId,
-          }).catch(console.error)
+        try {
+          if (intent.type === "open_character") {
+            const scrollTo = intent.scrollTo || "moments"
+            const characterId = intent.characterId
+            if (!characterId) {
+              throw new Error("Missing character ID")
+            }
+            router.push(`/s/${characterId}?scrollTo=${scrollTo}`)
+          } else if (intent.type === "checkout") {
+            openStripeCheckoutWithPurchaseType({
+              purchaseType: intent.purchaseType,
+              characterId: intent.characterId,
+              situationId: intent.situationId,
+              momentLevel: intent.momentLevel,
+              mediaId: intent.mediaId,
+            }).catch((error) => {
+              console.error("[AUTH] Checkout error:", error)
+              toast({
+                title: "Payment Error",
+                description: error?.message || "Unable to open checkout. Please try again.",
+                variant: "destructive",
+              })
+            })
+          }
+        } catch (error: any) {
+          console.error("[AUTH] Failed to execute intent:", error)
+          toast({
+            title: "Error",
+            description: error?.message || "Unable to complete your request.",
+            variant: "destructive",
+          })
         }
       }
       return

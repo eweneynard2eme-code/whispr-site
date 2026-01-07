@@ -15,15 +15,32 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>("en")
 
   useEffect(() => {
-    const stored = localStorage.getItem("whispr-locale") as Locale
-    if (stored) {
-      setLocaleState(stored)
+    if (typeof window === "undefined") return
+    try {
+      const stored = localStorage.getItem("whispr-locale") as Locale
+      if (stored && (stored === "en" || stored === "fr" || stored === "es")) {
+        setLocaleState(stored)
+      }
+    } catch (error) {
+      // Silently fail - localStorage might be disabled
+      if (process.env.NODE_ENV === "development") {
+        console.warn("[I18N] Failed to load locale from localStorage:", error)
+      }
     }
   }, [])
 
   const setLocale = (newLocale: Locale) => {
     setLocaleState(newLocale)
-    localStorage.setItem("whispr-locale", newLocale)
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("whispr-locale", newLocale)
+      } catch (error) {
+        // Silently fail - localStorage might be disabled or full
+        if (process.env.NODE_ENV === "development") {
+          console.warn("[I18N] Failed to save locale to localStorage:", error)
+        }
+      }
+    }
   }
 
   const t = (key: string) => getTranslation(locale, key)
