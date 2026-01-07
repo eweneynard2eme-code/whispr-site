@@ -40,7 +40,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
           email,
           password,
           options: {
-            emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || `${window.location.origin}/discover`,
+            emailRedirectTo: typeof window !== "undefined" ? `${window.location.origin}/discover` : "/discover",
             data: {
               username: `user_${Math.random().toString(36).substring(2, 8)}`,
               display_name: email.split("@")[0],
@@ -75,7 +75,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: typeof window !== "undefined" ? `${window.location.origin}/auth/callback` : "/auth/callback",
         },
       })
       if (error) throw error

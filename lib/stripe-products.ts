@@ -1,4 +1,5 @@
 import "server-only"
+import { ENV_STRIPE_PRICES } from "@/lib/env"
 
 export type MomentLevel = "private" | "intimate" | "exclusive"
 
@@ -10,26 +11,26 @@ export interface StripeProduct {
   mode: "payment" | "subscription"
 }
 
-// Product catalog - prices from env vars, fallback to empty for build
+// Product catalog - prices from env vars with fallback support
 export const STRIPE_PRODUCTS = {
   // One-time moment purchases
   moment: {
     private: {
-      priceId: process.env.STRIPE_PRICE_PRIVATE_MOMENT || "",
+      priceId: ENV_STRIPE_PRICES.PRIVATE_MOMENT,
       name: "Private Moment",
       description: "A conversation that doesn't happen in public.",
       priceInCents: 399,
       mode: "payment" as const,
     },
     intimate: {
-      priceId: process.env.STRIPE_PRICE_INTIMATE_MOMENT || "",
+      priceId: ENV_STRIPE_PRICES.INTIMATE_MOMENT,
       name: "Intimate Moment",
       description: "He lowers his voice. This moment brings you closer.",
       priceInCents: 499,
       mode: "payment" as const,
     },
     exclusive: {
-      priceId: process.env.STRIPE_PRICE_EXCLUSIVE_MOMENT || "",
+      priceId: ENV_STRIPE_PRICES.EXCLUSIVE_MOMENT,
       name: "Exclusive Moment",
       description: "Some moments are only shared once.",
       priceInCents: 699,
@@ -38,7 +39,7 @@ export const STRIPE_PRODUCTS = {
   },
   // One-time media purchase
   media: {
-    priceId: process.env.STRIPE_PRICE_PRIVATE_PHOTO || "",
+    priceId: ENV_STRIPE_PRICES.PRIVATE_PHOTO,
     name: "Private Photo",
     description: "Something you weren't meant to see.",
     subtitle: "He hesitated before sending it. It's not explicit. It's just… intimate.",
@@ -47,7 +48,7 @@ export const STRIPE_PRODUCTS = {
   },
   // Subscription
   plus: {
-    priceId: process.env.STRIPE_PRICE_WHISPR_PLUS_MONTHLY || "",
+    priceId: ENV_STRIPE_PRICES.WHISPR_PLUS_MONTHLY,
     name: "WHISPR Plus",
     description: "A different kind of access.",
     priceInCents: 1299,

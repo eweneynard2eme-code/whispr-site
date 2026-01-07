@@ -7,7 +7,11 @@ import { X } from "lucide-react"
 
 import { startCheckoutSession } from "@/app/actions/stripe"
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
+import { ENV_STRIPE } from "@/lib/env"
+
+const stripePromise = ENV_STRIPE.PUBLISHABLE_KEY
+  ? loadStripe(ENV_STRIPE.PUBLISHABLE_KEY)
+  : Promise.resolve(null)
 
 interface StripeCheckoutProps {
   productId: string

@@ -54,33 +54,94 @@ async function loadUserDataFromSupabase(userId: string) {
   notifyListeners()
 }
 
-// Initialize Supabase auth listener
-if (typeof window !== "undefined") {
+// Initialize Supabase auth listener - runs exactly once
+let sessionCheckStarted = false
+
+if (typeof window !== "undefined" && !sessionCheckStarted) {
+  sessionCheckStarted = true
   const supabase = getBrowserSupabase()
 
-  // Check initial session
-  supabase.auth.getSession().then(({ data: { session } }) => {
-    if (session?.user) {
+  // Check initial session immediately and set loading to false
+  // This prevents race conditions where components render before session is checked
+  // CRITICAL: isLoading must remain true until we have a definitive answer about auth state
+  supabase.auth
+    .getSession()
+    .then(({ data: { session }, error }) => {
+      if (error) {
+        console.error("[USER_STORE] Error getting session:", error)
+        // On error, we're definitely not logged in
+        state = {
+          ...state,
+          isLoading: false,
+          isLoggedIn: false,
+          userId: null,
+          supabaseUser: null,
+        }
+        notifyListeners()
+        return
+      }
+
+      if (session?.user) {
+        // User is logged in - set all auth fields atomically
+        state = {
+          ...state,
+          isLoggedIn: true,
+          username: session.user.user_metadata?.username || session.user.email?.split("@")[0] || "User",
+          email: session.user.email || null,
+          userId: session.user.id,
+          supabaseUser: session.user,
+          isLoading: false, // Set loading to false AFTER all fields are set
+        }
+        notifyListeners()
+        // Load additional user data asynchronously (favorites, recent chats)
+        loadUserDataFromSupabase(session.user.id).catch((err) => {
+          console.error("[USER_STORE] Error loading user data:", err)
+          // Don't crash - user data loading failure shouldn't break auth
+        })
+      } else {
+        // No session - user is definitely not logged in
+        state = {
+          ...state,
+          isLoading: false,
+          isLoggedIn: false,
+          userId: null,
+          supabaseUser: null,
+        }
+        notifyListeners()
+      }
+    })
+    .catch((error) => {
+      console.error("[USER_STORE] Failed to get session:", error)
+      // Always set loading to false even on error, and ensure all fields are cleared
       state = {
         ...state,
-        isLoggedIn: true,
-        username: session.user.user_metadata?.username || session.user.email?.split("@")[0] || "User",
-        email: session.user.email || null,
-        userId: session.user.id,
-        supabaseUser: session.user,
         isLoading: false,
+        isLoggedIn: false,
+        userId: null,
+        supabaseUser: null,
       }
       notifyListeners()
-      loadUserDataFromSupabase(session.user.id)
-    } else {
-      state = { ...state, isLoading: false }
-      notifyListeners()
-    }
-  })
+    })
+    .finally(() => {
+      // Safety net: ensure isLoading is always false after session check completes
+      // This prevents infinite loading states
+      if (state.isLoading) {
+        state = {
+          ...state,
+          isLoading: false,
+          // If we're still loading and have no userId, we're not logged in
+          isLoggedIn: false,
+          userId: state.userId || null,
+          supabaseUser: state.supabaseUser || null,
+        }
+        notifyListeners()
+      }
+    })
 
   // Listen for auth changes
   supabase.auth.onAuthStateChange((event, session) => {
     if (event === "SIGNED_IN" && session?.user) {
+      // Set all auth fields atomically to prevent race conditions
       state = {
         ...state,
         isLoggedIn: true,
@@ -88,11 +149,16 @@ if (typeof window !== "undefined") {
         email: session.user.email || null,
         userId: session.user.id,
         supabaseUser: session.user,
-        isLoading: false,
+        isLoading: false, // Set loading to false AFTER all fields are set
       }
       notifyListeners()
-      loadUserDataFromSupabase(session.user.id)
+      // Load additional user data asynchronously (doesn't affect auth state)
+      loadUserDataFromSupabase(session.user.id).catch((err) => {
+        console.error("[USER_STORE] Error loading user data:", err)
+        // Don't crash - user data loading failure shouldn't break auth
+      })
     } else if (event === "SIGNED_OUT") {
+      // Clear all auth fields atomically
       state = {
         ...state,
         isLoggedIn: false,

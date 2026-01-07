@@ -40,12 +40,16 @@ export function TopBar() {
           <span className="text-[8px] font-bold text-black">--</span>
         </div>
         <LanguageSelector />
+        {/* CRITICAL: NEVER show "Log in" if isLoading OR if isLoggedIn
+            Show loading skeleton while auth state is being determined
+            Only show "Log in" when we're CERTAIN user is not logged in
+            This prevents flicker when auth state is hydrating */}
         {isLoading ? (
           <div className="h-4 w-16 rounded bg-white/5 animate-pulse" />
         ) : isLoggedIn ? (
           <div className="flex items-center gap-2">
             <Link href="/profile" className="text-xs text-gray-300 hover:text-white transition-colors">
-              {username}
+              {username || "Account"}
             </Link>
             <button onClick={handleLogout} className="text-xs text-gray-500 hover:text-white transition-colors">
               {t("logOut")}

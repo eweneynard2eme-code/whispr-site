@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
-import { notFound } from "next/navigation"
+// Removed notFound import - we never throw in client components, show friendly UI instead
 import Image from "next/image"
 import Link from "next/link"
 import { ArrowLeft, Lock, Camera, Star, Sparkles, Check } from "lucide-react"
@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils"
 import { userStore, useUserStore } from "@/lib/user-store"
 import { useAuth } from "@/hooks/use-auth"
 import { useAuthModal } from "@/components/auth-modal-provider"
-import { openStripeCheckoutWithPurchaseType, subscribeCheckoutLock } from "@/lib/paywall"
+import { openStripeCheckoutWithPurchaseType, subscribeCheckoutLock, getIsOpeningCheckout } from "@/lib/paywall"
 
 type MomentLevel = "free" | "private" | "intimate" | "exclusive"
 
@@ -68,6 +68,8 @@ function getCharacterGradient(name: string): string {
 }
 
 function getDefaultSituations(character: Character): Situation[] {
+  // Defensive: ensure image exists
+  const characterImage = character.image || "/placeholder.svg"
   return [
     {
       id: "free1",
@@ -76,7 +78,7 @@ function getDefaultSituations(character: Character): Situation[] {
       tags: ["calm", "quiet"],
       isPaid: false,
       momentLevel: "free",
-      image: character.image,
+      image: characterImage,
     },
     {
       id: "private1",
@@ -150,48 +152,83 @@ export default function SituationsPage() {
   }, [])
 
   useEffect(() => {
-    if (id) {
+    if (!id) {
+      setLoading(false)
+      return
+    }
+
+    // Validate ID is a non-empty string
+    if (typeof id !== "string" || id.trim().length === 0) {
+      console.warn("[CHARACTER_PAGE] Invalid character ID:", id)
+      setLoading(false)
+      return
+    }
+
+    try {
       const char = getCharacterById(id)
       if (char) {
         setCharacter(char)
+      } else {
+        // Character not found - show not found state
+        console.warn("[CHARACTER_PAGE] Character not found:", id)
       }
+    } catch (error) {
+      console.error("[CHARACTER_PAGE] Error loading character:", error)
+      // Don't crash - just show loading/error state
+    } finally {
       setLoading(false)
     }
   }, [id])
 
   // Auto-scroll to section based on scrollTo query param
   useEffect(() => {
-    const scrollTo = searchParams.get("scrollTo")
-    if (!scrollTo || loading) return
+    if (typeof window === "undefined") return
+    if (loading || !character) return
 
-    console.log("[CHARACTER_PAGE] Auto-scrolling to section:", scrollTo)
+    try {
+      const scrollTo = searchParams.get("scrollTo")
+      if (!scrollTo) return
 
-    let retries = 0
-    const maxRetries = 6
-    const retryDelay = 150
+      console.log("[CHARACTER_PAGE] Auto-scrolling to section:", scrollTo)
 
-    const attemptScroll = () => {
-      const element = document.querySelector(`[data-section="${scrollTo}"]`)
-      if (element) {
-        console.log("[CHARACTER_PAGE] Found section element, scrolling")
-        element.scrollIntoView({ behavior: "smooth", block: "start" })
-        // Clean up query param after scrolling
-        const url = new URL(window.location.href)
-        url.searchParams.delete("scrollTo")
-        window.history.replaceState({}, "", url.toString())
-      } else if (retries < maxRetries) {
-        retries++
-        console.log(`[CHARACTER_PAGE] Section not found, retrying (${retries}/${maxRetries})`)
-        setTimeout(attemptScroll, retryDelay)
-      } else {
-        console.warn("[CHARACTER_PAGE] Section not found after max retries:", scrollTo)
+      let retries = 0
+      const maxRetries = 6
+      const retryDelay = 150
+
+      const attemptScroll = () => {
+        try {
+          const element = document.querySelector(`[data-section="${scrollTo}"]`)
+          if (element) {
+            console.log("[CHARACTER_PAGE] Found section element, scrolling")
+            element.scrollIntoView({ behavior: "smooth", block: "start" })
+            // Clean up query param after scrolling
+            try {
+              const url = new URL(window.location.href)
+              url.searchParams.delete("scrollTo")
+              window.history.replaceState({}, "", url.toString())
+            } catch {
+              // Ignore URL manipulation errors
+            }
+          } else if (retries < maxRetries) {
+            retries++
+            console.log(`[CHARACTER_PAGE] Section not found, retrying (${retries}/${maxRetries})`)
+            setTimeout(attemptScroll, retryDelay)
+          } else {
+            console.warn("[CHARACTER_PAGE] Section not found after max retries:", scrollTo)
+          }
+        } catch (error) {
+          console.error("[CHARACTER_PAGE] Scroll error:", error)
+          // Don't crash - just log and continue
+        }
       }
-    }
 
-    // Small delay to ensure DOM is ready
-    const timeout = setTimeout(attemptScroll, 100)
-    return () => clearTimeout(timeout)
-  }, [searchParams, loading])
+      // Small delay to ensure DOM is ready
+      const timeout = setTimeout(attemptScroll, 100)
+      return () => clearTimeout(timeout)
+    } catch (error) {
+      console.error("[CHARACTER_PAGE] Scroll setup error:", error)
+    }
+  }, [searchParams, loading, character])
 
   if (loading) {
     return (
@@ -201,13 +238,36 @@ export default function SituationsPage() {
     )
   }
 
+
+  // Guard: ensure character exists and has required properties before accessing
   if (!character) {
-    notFound()
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center px-4">
+        <div className="max-w-md w-full text-center">
+          <h1 className="text-2xl font-semibold text-white mb-2">Character not found</h1>
+          <p className="text-gray-400 mb-6">
+            The character you're looking for doesn't exist or has been removed.
+          </p>
+          <Link
+            href="/discover"
+            className="inline-block rounded-lg bg-violet-600 hover:bg-violet-700 text-white px-6 py-2.5 text-sm font-medium transition-colors"
+          >
+            Browse Characters
+          </Link>
+        </div>
+      </div>
+    )
   }
+
+  // Defensive checks: ensure character has required properties
+  const characterName = character.name || "Character"
+  const characterTags = character.tags || []
+  const characterImage = character.image || "/placeholder.svg"
+  const firstName = characterName.split(" ")[0] || characterName
 
   const isFavorite = userStore.isFavorite(character.id)
   const situations =
-    character.situations.length > 0
+    (character.situations && character.situations.length > 0)
       ? character.situations.map((s) => ({ ...s, momentLevel: s.isPaid ? "private" : "free" }) as Situation)
       : getDefaultSituations(character)
 
@@ -318,8 +378,8 @@ export default function SituationsPage() {
 
         {!imageError ? (
           <Image
-            src={character.image || "/placeholder.svg"}
-            alt={character.name}
+            src={characterImage}
+            alt={characterName}
             fill
             className="object-cover"
             priority
@@ -329,11 +389,11 @@ export default function SituationsPage() {
           <div
             className={cn(
               "absolute inset-0 bg-gradient-to-br flex items-center justify-center",
-              getCharacterGradient(character.name),
+              getCharacterGradient(characterName),
             )}
           >
             <div className="w-40 h-40 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center border border-white/20">
-              <span className="text-6xl font-semibold text-white">{character.name[0]}</span>
+              <span className="text-6xl font-semibold text-white">{characterName[0] || "?"}</span>
             </div>
           </div>
         )}
@@ -372,7 +432,7 @@ export default function SituationsPage() {
                   getCharacterGradient(character.name),
                 )}
               >
-                <span className="text-4xl font-semibold text-white">{character.name[0]}</span>
+                <span className="text-4xl font-semibold text-white">{characterName[0] || "?"}</span>
               </div>
             )}
           </div>
@@ -380,13 +440,13 @@ export default function SituationsPage() {
           {/* Character info - Hero section */}
           <section data-section="hero" className="mb-8">
             <h1 className="text-3xl lg:text-4xl xl:text-5xl font-bold text-white mb-3 tracking-tight">
-              {character.name}
+              {characterName}
             </h1>
 
-            <p className="text-lg lg:text-xl text-gray-400 mb-5 max-w-lg leading-relaxed">{character.description}</p>
+            <p className="text-lg lg:text-xl text-gray-400 mb-5 max-w-lg leading-relaxed">{character.description || ""}</p>
 
             <div className="flex flex-wrap gap-2 mb-6">
-              {character.tags.slice(0, 5).map((tag) => (
+              {characterTags.slice(0, 5).map((tag) => (
                 <span key={tag} className="text-xs text-gray-500 lowercase tracking-wide">
                   {tag} ·
                 </span>
@@ -394,7 +454,7 @@ export default function SituationsPage() {
             </div>
 
             <p className="text-sm text-gray-500 leading-relaxed max-w-md">
-              Choose how you want to meet {character.name.split(" ")[0]}.
+              Choose how you want to meet {firstName}.
             </p>
           </section>
 
@@ -449,7 +509,7 @@ export default function SituationsPage() {
           <section data-section="moments" className="mb-16">
             <div className="mb-8">
               <h2 className="text-2xl font-bold text-white mb-2">Moments</h2>
-              <p className="text-sm text-gray-400">Choose how you want to meet {character.name.split(" ")[0]}</p>
+              <p className="text-sm text-gray-400">Choose how you want to meet {firstName}</p>
             </div>
 
             {/* Tonight's path strip */}
@@ -500,7 +560,7 @@ export default function SituationsPage() {
                   {/* Image */}
                   <div className="absolute inset-0">
                     <Image
-                      src={character.image || "/placeholder.svg"}
+                      src={characterImage}
                       alt={situation.title}
                       fill
                       className="object-cover transition-transform duration-700 group-hover:scale-110"

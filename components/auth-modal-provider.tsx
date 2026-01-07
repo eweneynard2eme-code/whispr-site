@@ -94,11 +94,27 @@ export function AuthModalProvider({ children }: { children: ReactNode }) {
           if (intentToExecute.type === "open_character") {
             const scrollTo = intentToExecute.scrollTo || "moments"
             const characterId = intentToExecute.characterId
-            if (!characterId) {
-              throw new Error("Missing character ID")
+            
+            // Validate character ID before navigation
+            if (!characterId || typeof characterId !== "string" || characterId.trim().length === 0) {
+              console.warn("[AUTH] Invalid character ID in intent:", characterId)
+              throw new Error("Invalid character ID")
             }
+            
             console.log("[AUTH] Opening character:", characterId, "scrollTo:", scrollTo)
-            router.push(`/s/${characterId}?scrollTo=${scrollTo}`)
+            
+            // Use router.push with error handling
+            try {
+              router.push(`/s/${encodeURIComponent(characterId)}?scrollTo=${encodeURIComponent(scrollTo)}`)
+            } catch (routerError) {
+              console.error("[AUTH] Router push failed:", routerError)
+              // Fallback to window.location if router fails
+              if (typeof window !== "undefined") {
+                window.location.href = `/s/${encodeURIComponent(characterId)}?scrollTo=${encodeURIComponent(scrollTo)}`
+              } else {
+                throw new Error("Navigation failed")
+              }
+            }
           } else if (intentToExecute.type === "checkout") {
             console.log("[AUTH] Opening checkout with purchaseType:", intentToExecute.purchaseType)
             await openStripeCheckoutWithPurchaseType({
@@ -135,24 +151,44 @@ export function AuthModalProvider({ children }: { children: ReactNode }) {
     }
   }, [isLoggedIn, isLoading, currentIntent, router])
 
-  // Restore intent from localStorage on mount (client-side only)
+  // Restore intent from localStorage on mount (client-side only) - runs once
   useEffect(() => {
     if (typeof window === "undefined") return
 
     try {
       const stored = getStoredIntent()
       if (stored) {
-        // Validate stored intent structure
+        // Validate stored intent structure thoroughly
         if (
           stored &&
           typeof stored === "object" &&
-          ("type" in stored) &&
+          "type" in stored &&
           (stored.type === "open_character" || stored.type === "checkout")
         ) {
-          setCurrentIntent(stored)
-          // If already logged in, intent will be executed by the effect above
+          // Validate open_character intent
+          if (stored.type === "open_character") {
+            if (typeof stored.characterId === "string" && stored.characterId.length > 0) {
+              setCurrentIntent(stored)
+            } else {
+              console.warn("[AUTH] Invalid open_character intent: missing characterId")
+              storeIntent(null)
+            }
+          }
+          // Validate checkout intent
+          else if (stored.type === "checkout") {
+            if (
+              typeof stored.purchaseType === "string" &&
+              ["moment", "media", "plus"].includes(stored.purchaseType)
+            ) {
+              setCurrentIntent(stored)
+            } else {
+              console.warn("[AUTH] Invalid checkout intent: invalid purchaseType")
+              storeIntent(null)
+            }
+          }
         } else {
           // Invalid intent structure - remove it
+          console.warn("[AUTH] Invalid intent structure, removing")
           storeIntent(null)
         }
       }
@@ -161,11 +197,17 @@ export function AuthModalProvider({ children }: { children: ReactNode }) {
       console.error("[AUTH] Failed to restore intent:", error)
       storeIntent(null)
     }
-  }, [isLoading, isLoggedIn])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Run once on mount only
 
   const openModal = (intent?: AuthIntent) => {
-    // Never open modal if already logged in
-    if (isLoggedIn) {
+    // CRITICAL: Never open modal if already logged in OR if still loading
+    // This prevents modal from opening during auth state hydration
+    if (isLoading || isLoggedIn) {
+      if (isLoading) {
+        console.log("[AUTH] Auth state loading, skipping modal open")
+        return
+      }
       console.log("[AUTH] User is logged in, skipping modal. Intent:", intent)
       // Execute intent directly if provided
       if (intent) {
@@ -173,10 +215,23 @@ export function AuthModalProvider({ children }: { children: ReactNode }) {
           if (intent.type === "open_character") {
             const scrollTo = intent.scrollTo || "moments"
             const characterId = intent.characterId
-            if (!characterId) {
-              throw new Error("Missing character ID")
+            
+            // Validate character ID before navigation
+            if (!characterId || typeof characterId !== "string" || characterId.trim().length === 0) {
+              console.warn("[AUTH] Invalid character ID in intent:", characterId)
+              throw new Error("Invalid character ID")
             }
-            router.push(`/s/${characterId}?scrollTo=${scrollTo}`)
+            
+            try {
+              router.push(`/s/${encodeURIComponent(characterId)}?scrollTo=${encodeURIComponent(scrollTo)}`)
+            } catch (routerError) {
+              console.error("[AUTH] Router push failed:", routerError)
+              if (typeof window !== "undefined") {
+                window.location.href = `/s/${encodeURIComponent(characterId)}?scrollTo=${encodeURIComponent(scrollTo)}`
+              } else {
+                throw new Error("Navigation failed")
+              }
+            }
           } else if (intent.type === "checkout") {
             openStripeCheckoutWithPurchaseType({
               purchaseType: intent.purchaseType,

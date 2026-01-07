@@ -209,6 +209,8 @@ export async function openStripeCheckout(
       description: errorMsg,
       variant: "destructive",
     })
+    // Release lock on error
+    setCheckoutLock(false)
     throw new Error(errorMsg)
   }
 

@@ -1,6 +1,7 @@
 // Singleton to avoid Multiple GoTrueClient instances warning
 import { createBrowserClient } from "@supabase/ssr"
 import type { SupabaseClient } from "@supabase/supabase-js"
+import { ENV_SUPABASE } from "@/lib/env"
 
 let browserClient: SupabaseClient | null = null
 
@@ -11,10 +12,20 @@ let browserClient: SupabaseClient | null = null
  */
 export function getBrowserSupabase(): SupabaseClient {
   if (!browserClient) {
-    browserClient = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    )
+    const url = ENV_SUPABASE.URL
+    const key = ENV_SUPABASE.ANON_KEY
+    
+    if (!url || !key) {
+      // Return a mock client in development to prevent crashes
+      // In production, these should always be set
+      console.warn("[SUPABASE] Missing env vars, using fallback client")
+      browserClient = createBrowserClient(
+        url || "https://placeholder.supabase.co",
+        key || "placeholder-key"
+      )
+    } else {
+      browserClient = createBrowserClient(url, key)
+    }
   }
   return browserClient
 }
