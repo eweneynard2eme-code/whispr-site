@@ -4,13 +4,13 @@ import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
-import { ArrowLeft, Lock, Star } from "lucide-react"
+import { ArrowLeft, Lock, Star, Sparkles } from "lucide-react"
 import { getCharacterById, type Character } from "@/lib/data"
 import { cn } from "@/lib/utils"
 import { userStore } from "@/lib/user-store"
 import { useAuth } from "@/hooks/use-auth"
 import { useAuthModal } from "@/components/auth-modal-provider"
-import { openStripeCheckoutWithPurchaseType } from "@/lib/paywall"
+import { openStripeCheckoutWithPurchaseType, getIsOpeningCheckout } from "@/lib/paywall"
 
 // ============================================================================
 // TYPES & CONSTANTS
@@ -63,7 +63,6 @@ const MOMENT_PRICES: Record<MomentLevel, string> = {
 // ============================================================================
 
 async function loadCharacterData(id: string | undefined): Promise<SafeCharacter | null> {
-  // Validate ID
   if (!id || typeof id !== "string" || id.trim().length === 0) {
     console.warn("[CHARACTER_PAGE] Invalid character ID:", id)
     return null
@@ -76,7 +75,6 @@ async function loadCharacterData(id: string | undefined): Promise<SafeCharacter 
       return null
     }
 
-    // Build safe character with guaranteed defaults
     const safeCharacter: SafeCharacter = {
       id: character.id || id,
       name: character.name || "Unknown",
@@ -94,21 +92,32 @@ async function loadCharacterData(id: string | undefined): Promise<SafeCharacter 
 }
 
 function buildSafeSituations(character: Character): Situation[] {
-  // Use character's situations if available
   if (Array.isArray(character.situations) && character.situations.length > 0) {
-    return character.situations.map((s) => ({
-      id: s.id || `situation-${Math.random()}`,
-      title: s.title || "Untitled",
-      description: s.description || "",
-      tags: Array.isArray(s.tags) ? s.tags : [],
-      isPaid: s.isPaid === true,
-      momentLevel: s.isPaid ? "private" : "free",
-      image: s.image || undefined,
-      blurred: s.blurred || false,
-    }))
+    return character.situations.map((s, idx) => {
+      // Determine moment level based on position and isPaid
+      let momentLevel: MomentLevel = "free"
+      if (s.isPaid) {
+        // First paid = private, second = intimate, third+ = exclusive
+        const paidIndex = character.situations.filter((sit) => sit.isPaid).indexOf(s)
+        if (paidIndex === 0) momentLevel = "private"
+        else if (paidIndex === 1) momentLevel = "intimate"
+        else momentLevel = "exclusive"
+      }
+
+      return {
+        id: s.id || `situation-${idx}`,
+        title: s.title || "Untitled",
+        description: s.description || "",
+        tags: Array.isArray(s.tags) ? s.tags : [],
+        isPaid: s.isPaid === true,
+        momentLevel,
+        image: s.image || undefined,
+        blurred: s.blurred !== false && s.isPaid,
+      }
+    })
   }
 
-  // Default situations if none provided
+  // Default situations
   return [
     {
       id: "free1",
@@ -201,14 +210,12 @@ function isMomentUnlocked(
   if (!situation.isPaid || situation.momentLevel === "free") return true
   if (!entitlements?.authenticated) return false
 
-  // Plus subscription covers private + intimate (NOT exclusive)
   if (entitlements.hasPlus && entitlements.plusStatus === "active") {
     if (situation.momentLevel === "private" || situation.momentLevel === "intimate") {
       return true
     }
   }
 
-  // Check for one-time purchase
   return entitlements.unlocks.some(
     (u) =>
       u.type === "moment" &&
@@ -228,15 +235,16 @@ function HeroSection({ character }: { character: SafeCharacter }) {
   const gradient = getCharacterGradient(character.name)
 
   return (
-    <section className="mb-8">
+    <section className="mb-12">
       {/* Mobile image */}
-      <div className="lg:hidden relative w-full aspect-[3/4] max-w-xs mx-auto mb-8 rounded-2xl overflow-hidden">
+      <div className="lg:hidden relative w-full aspect-[3/4] max-w-xs mx-auto mb-8 rounded-2xl overflow-hidden shadow-2xl">
         {!imageError && character.image ? (
           <Image
             src={character.image}
             alt={character.name}
             fill
             className="object-cover"
+            priority
             onError={() => setImageError(true)}
           />
         ) : (
@@ -244,16 +252,18 @@ function HeroSection({ character }: { character: SafeCharacter }) {
             <span className="text-4xl font-semibold text-white">{getInitial(character.name)}</span>
           </div>
         )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
       </div>
 
       {/* Desktop image */}
-      <div className="hidden lg:flex w-[45%] xl:w-[40%] relative mb-8">
+      <div className="hidden lg:flex w-[45%] xl:w-[40%] relative">
         {!imageError && character.image ? (
           <Image
             src={character.image}
             alt={character.name}
             fill
             className="object-cover"
+            priority
             onError={() => setImageError(true)}
           />
         ) : (
@@ -264,78 +274,251 @@ function HeroSection({ character }: { character: SafeCharacter }) {
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-[#0a0a0a]" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
       </div>
 
       {/* Character info */}
-      <div>
-        <h1 className="text-3xl lg:text-4xl xl:text-5xl font-bold text-white mb-3 tracking-tight">
+      <div className="lg:absolute lg:bottom-12 lg:left-12 lg:right-12 z-20">
+        <h1 className="text-4xl lg:text-5xl xl:text-6xl font-bold text-white mb-3 tracking-tight">
           {character.name}
         </h1>
-        <p className="text-lg lg:text-xl text-gray-400 mb-5 max-w-lg leading-relaxed">
+        <p className="text-lg lg:text-xl text-gray-300 mb-4 max-w-2xl leading-relaxed">
           {character.description}
         </p>
         {character.tags.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-6">
             {character.tags.slice(0, 5).map((tag, idx) => (
-              <span key={idx} className="text-xs text-gray-500 lowercase tracking-wide">
+              <span key={idx} className="text-xs text-gray-400 lowercase tracking-wide">
                 {tag} ·
               </span>
             ))}
           </div>
         )}
-        <p className="text-sm text-gray-500 leading-relaxed max-w-md">
-          Choose how you want to meet {firstName}.
-        </p>
       </div>
     </section>
   )
 }
 
 // ============================================================================
-// COMPONENT: Moments Gallery
+// COMPONENT: Tonight's Path Strip
+// ============================================================================
+
+function TonightsPath({
+  activeTier,
+  onTierHover,
+}: {
+  activeTier: "warm-up" | "closer" | "dark-side" | null
+  onTierHover: (tier: "warm-up" | "closer" | "dark-side" | null) => void
+}) {
+  return (
+    <div className="mb-8 flex items-center justify-center gap-4 text-xs">
+      <div
+        className={cn(
+          "flex items-center gap-2 transition-all duration-300 cursor-pointer",
+          activeTier === "warm-up" && "scale-110",
+        )}
+        onMouseEnter={() => onTierHover("warm-up")}
+        onMouseLeave={() => onTierHover(null)}
+      >
+        <div
+          className={cn(
+            "w-2 h-2 rounded-full bg-violet-400 transition-all duration-300",
+            activeTier === "warm-up" && "scale-125 bg-violet-500",
+          )}
+        />
+        <span
+          className={cn(
+            "text-gray-400 transition-colors",
+            activeTier === "warm-up" && "text-violet-400 font-medium",
+          )}
+        >
+          Start gentle
+        </span>
+      </div>
+      <div className="w-8 h-px bg-gray-700" />
+      <div
+        className={cn(
+          "flex items-center gap-2 transition-all duration-300 cursor-pointer",
+          activeTier === "closer" && "scale-110",
+        )}
+        onMouseEnter={() => onTierHover("closer")}
+        onMouseLeave={() => onTierHover(null)}
+      >
+        <div
+          className={cn(
+            "w-2 h-2 rounded-full bg-violet-500 transition-all duration-300",
+            activeTier === "closer" && "scale-125 bg-violet-600",
+          )}
+        />
+        <span
+          className={cn(
+            "text-gray-400 transition-colors",
+            activeTier === "closer" && "text-violet-400 font-medium",
+          )}
+        >
+          Gets closer
+        </span>
+      </div>
+      <div className="w-8 h-px bg-gray-700" />
+      <div
+        className={cn(
+          "flex items-center gap-2 transition-all duration-300 cursor-pointer",
+          activeTier === "dark-side" && "scale-110",
+        )}
+        onMouseEnter={() => onTierHover("dark-side")}
+        onMouseLeave={() => onTierHover(null)}
+      >
+        <div
+          className={cn(
+            "w-2 h-2 rounded-full bg-amber-500 transition-all duration-300",
+            activeTier === "dark-side" && "scale-125 bg-amber-600",
+          )}
+        />
+        <span
+          className={cn(
+            "text-gray-400 transition-colors",
+            activeTier === "dark-side" && "text-amber-400 font-medium",
+          )}
+        >
+          No turning back
+        </span>
+      </div>
+    </div>
+  )
+}
+
+// ============================================================================
+// COMPONENT: Moment Cards (3 Tiers)
 // ============================================================================
 
 function MomentsGallery({
   character,
   entitlements,
+  activeMoment,
   onMomentClick,
+  onMomentHover,
 }: {
   character: SafeCharacter
   entitlements: Entitlements | null
+  activeMoment: Situation | null
   onMomentClick: (situation: Situation) => void
+  onMomentHover: (situation: Situation | null) => void
 }) {
   const freeMoments = character.situations.filter((s) => !s.isPaid)
-  const paidMoments = character.situations.filter((s) => s.isPaid)
+  const privateMoments = character.situations.filter((s) => s.isPaid && s.momentLevel === "private")
+  const intimateMoments = character.situations.filter((s) => s.isPaid && s.momentLevel === "intimate")
+  const exclusiveMoments = character.situations.filter((s) => s.isPaid && s.momentLevel === "exclusive")
+
+  const allMoments = [...freeMoments, ...privateMoments, ...intimateMoments, ...exclusiveMoments]
+
+  if (allMoments.length === 0) {
+    return (
+      <section className="mb-16">
+        <div className="text-center py-16">
+          <p className="text-gray-400">No moments available for this character.</p>
+        </div>
+      </section>
+    )
+  }
 
   return (
     <section className="mb-16">
       <div className="mb-8">
-        <h2 className="text-2xl font-bold text-white mb-2">Moments</h2>
+        <h2 className="text-3xl font-bold text-white mb-2">Moments</h2>
         <p className="text-sm text-gray-400">Choose how you want to meet {getFirstName(character.name)}</p>
       </div>
 
+      <TonightsPath
+        activeTier={
+          activeMoment?.momentLevel === "free"
+            ? "warm-up"
+            : activeMoment?.momentLevel === "private" || activeMoment?.momentLevel === "intimate"
+              ? "closer"
+              : activeMoment?.momentLevel === "exclusive"
+                ? "dark-side"
+                : null
+        }
+        onTierHover={(tier) => {
+          if (tier === "warm-up") {
+            const moment = freeMoments[0]
+            if (moment) onMomentHover(moment)
+          } else if (tier === "closer") {
+            const moment = privateMoments[0] || intimateMoments[0]
+            if (moment) onMomentHover(moment)
+          } else if (tier === "dark-side") {
+            const moment = exclusiveMoments[0]
+            if (moment) onMomentHover(moment)
+          } else {
+            onMomentHover(null)
+          }
+        }}
+      />
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Free moments */}
+        {/* Tier A: Warm-up (Free) */}
         {freeMoments.map((situation) => (
-          <MomentCard
+          <MomentCardTierA
             key={situation.id}
             situation={situation}
             character={character}
-            isUnlocked={true}
+            isActive={activeMoment?.id === situation.id}
             onClick={() => onMomentClick(situation)}
+            onHover={() => onMomentHover(situation)}
+            onHoverEnd={() => onMomentHover(null)}
           />
         ))}
 
-        {/* Paid moments */}
-        {paidMoments.map((situation) => {
+        {/* Tier B: Closer (Premium) */}
+        {[...privateMoments, ...intimateMoments].map((situation) => {
           const isUnlocked = isMomentUnlocked(situation, character.id, entitlements)
           return (
-            <MomentCard
+            <MomentCardTierB
               key={situation.id}
               situation={situation}
               character={character}
               isUnlocked={isUnlocked}
+              isActive={activeMoment?.id === situation.id}
               onClick={() => onMomentClick(situation)}
+              onHover={() => onMomentHover(situation)}
+              onHoverEnd={() => onMomentHover(null)}
+              onPlusClick={() => {
+                // Handle WHISPR+ click
+                onMomentClick({
+                  id: "plus",
+                  title: "WHISPR Plus",
+                  description: "",
+                  tags: [],
+                  isPaid: true,
+                  momentLevel: "private",
+                })
+              }}
+            />
+          )
+        })}
+
+        {/* Tier C: Dark side (Exclusive) */}
+        {exclusiveMoments.map((situation) => {
+          const isUnlocked = isMomentUnlocked(situation, character.id, entitlements)
+          return (
+            <MomentCardTierC
+              key={situation.id}
+              situation={situation}
+              character={character}
+              isUnlocked={isUnlocked}
+              isActive={activeMoment?.id === situation.id}
+              onClick={() => onMomentClick(situation)}
+              onHover={() => onMomentHover(situation)}
+              onHoverEnd={() => onMomentHover(null)}
+              onPlusClick={() => {
+                onMomentClick({
+                  id: "plus",
+                  title: "WHISPR Plus",
+                  description: "",
+                  tags: [],
+                  isPaid: true,
+                  momentLevel: "private",
+                })
+              }}
             />
           )
         })}
@@ -344,30 +527,34 @@ function MomentsGallery({
   )
 }
 
-function MomentCard({
+// Tier A: Warm-up (Free)
+function MomentCardTierA({
   situation,
   character,
-  isUnlocked,
+  isActive,
   onClick,
+  onHover,
+  onHoverEnd,
 }: {
   situation: Situation
   character: SafeCharacter
-  isUnlocked: boolean
+  isActive: boolean
   onClick: () => void
+  onHover: () => void
+  onHoverEnd: () => void
 }) {
   const [imageError, setImageError] = useState(false)
   const imageSrc = situation.image || character.image || "/placeholder.svg"
-  const price = MOMENT_PRICES[situation.momentLevel]
 
   return (
     <div
-      onClick={onClick}
       className={cn(
-        "group relative aspect-[4/5] rounded-2xl overflow-hidden border transition-all duration-500 hover:scale-[1.02] cursor-pointer",
-        isUnlocked
-          ? "bg-green-500/5 border-green-500/30 hover:border-green-500/50"
-          : "bg-[#1a1a1a] border-violet-500/30 hover:border-violet-500/50",
+        "group relative aspect-[4/5] rounded-2xl overflow-hidden border border-white/10 bg-[#1a1a1a] transition-all duration-500 hover:scale-[1.02] hover:border-white/20 hover:shadow-2xl hover:shadow-violet-500/10 cursor-pointer",
+        isActive && "border-violet-500/50 scale-[1.02]",
       )}
+      onClick={onClick}
+      onMouseEnter={onHover}
+      onMouseLeave={onHoverEnd}
     >
       <div className="absolute inset-0">
         {!imageError ? (
@@ -377,24 +564,20 @@ function MomentCard({
             fill
             className="object-cover transition-transform duration-700 group-hover:scale-110"
             sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            loading="lazy"
             onError={() => setImageError(true)}
           />
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-violet-600/80 to-purple-900/80" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
-        {situation.blurred && !isUnlocked && (
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
       </div>
 
-      {!isUnlocked && (
-        <div className="absolute top-4 right-4 z-10">
-          <div className="w-6 h-6 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center border border-white/20">
-            <Lock className="h-3 w-3 text-violet-400" />
-          </div>
-        </div>
-      )}
+      <div className="absolute top-4 left-4 z-10">
+        <span className="px-3 py-1 rounded-full bg-violet-500/20 backdrop-blur-sm border border-violet-500/30 text-xs font-medium text-violet-300">
+          Start gentle
+        </span>
+      </div>
 
       <div className="absolute inset-0 flex flex-col justify-end p-6 z-10">
         <h3 className="text-xl font-semibold text-white mb-2 group-hover:text-violet-300 transition-colors">
@@ -406,15 +589,273 @@ function MomentCard({
             e.stopPropagation()
             onClick()
           }}
-          className={cn(
-            "w-full py-2.5 px-4 rounded-lg font-medium text-sm transition-colors",
-            isUnlocked
-              ? "bg-green-600 hover:bg-green-700 text-white"
-              : "bg-violet-600 hover:bg-violet-700 text-white",
-          )}
+          className="w-full py-2.5 px-4 rounded-lg bg-violet-600 hover:bg-violet-700 text-white font-medium text-sm transition-colors mb-1"
         >
-          {isUnlocked ? "Start" : `Unlock – ${price}`}
+          Start
         </button>
+        <p className="text-[10px] text-violet-400/60 text-center">Instant access</p>
+      </div>
+    </div>
+  )
+}
+
+// Tier B: Closer (Premium)
+function MomentCardTierB({
+  situation,
+  character,
+  isUnlocked,
+  isActive,
+  onClick,
+  onHover,
+  onHoverEnd,
+  onPlusClick,
+}: {
+  situation: Situation
+  character: SafeCharacter
+  isUnlocked: boolean
+  isActive: boolean
+  onClick: () => void
+  onHover: () => void
+  onHoverEnd: () => void
+  onPlusClick: () => void
+}) {
+  const [imageError, setImageError] = useState(false)
+  const imageSrc = situation.image || character.image || "/placeholder.svg"
+  const price = MOMENT_PRICES[situation.momentLevel]
+
+  return (
+    <div
+      className={cn(
+        "group relative aspect-[4/5] rounded-2xl overflow-hidden border transition-all duration-500 hover:scale-[1.02] cursor-pointer",
+        isUnlocked
+          ? "bg-green-500/5 border-green-500/30 hover:border-green-500/50"
+          : "bg-[#1a1a1a] border-violet-500/30 hover:border-violet-500/50",
+        isActive && "scale-[1.02]",
+      )}
+      onClick={onClick}
+      onMouseEnter={onHover}
+      onMouseLeave={onHoverEnd}
+    >
+      <div className="absolute inset-0">
+        {!imageError ? (
+          <Image
+            src={imageSrc}
+            alt={situation.title}
+            fill
+            className="object-cover transition-transform duration-700 group-hover:scale-110"
+            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            loading="lazy"
+            onError={() => setImageError(true)}
+          />
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-violet-600/80 to-purple-900/80" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-black/20" />
+        {!isUnlocked && <div className="absolute inset-0 bg-gradient-to-br from-violet-900/30 via-pink-900/20 to-transparent" />}
+      </div>
+
+      <div className="absolute top-4 left-4 z-10">
+        <span className="px-3 py-1 rounded-full bg-violet-500/20 backdrop-blur-sm border border-violet-500/30 text-xs font-medium text-violet-300">
+          Gets closer
+        </span>
+      </div>
+
+      {!isUnlocked && (
+        <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+          <span className="px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-sm border border-white/20 text-[10px] font-medium text-violet-300/80">
+            Locked
+          </span>
+          <div className="w-6 h-6 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center border border-white/20">
+            <Lock className="h-3 w-3 text-violet-400" />
+          </div>
+        </div>
+      )}
+
+      <div className="absolute inset-0 flex flex-col justify-end p-6 z-10">
+        <h3 className="text-xl font-semibold text-white mb-2 group-hover:text-violet-300 transition-colors">
+          {situation.title}
+        </h3>
+        {!isUnlocked && (
+          <p className="text-sm text-violet-300/80 mb-2 italic leading-relaxed">He gets closer than usual…</p>
+        )}
+        <p className="text-sm text-gray-300 mb-4 leading-relaxed line-clamp-2">{situation.description}</p>
+        {isUnlocked ? (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onClick()
+            }}
+            className="w-full py-2.5 px-4 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium text-sm transition-colors"
+          >
+            Start
+          </button>
+        ) : (
+          <>
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onClick()
+              }}
+              className="w-full py-2.5 px-4 rounded-lg bg-violet-600 hover:bg-violet-700 text-white font-medium text-sm transition-colors mb-2"
+            >
+              Unlock – {price.replace("$", "€")}
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onPlusClick()
+              }}
+              className="text-xs text-violet-400/80 hover:text-violet-400 text-center transition-colors mb-1"
+            >
+              Get WHISPR+ — unlock all moments tonight
+            </button>
+            <p className="text-[10px] text-violet-400/60 text-center">(Best value) from €12.99/mo</p>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// Tier C: Dark side (Exclusive)
+function MomentCardTierC({
+  situation,
+  character,
+  isUnlocked,
+  isActive,
+  onClick,
+  onHover,
+  onHoverEnd,
+  onPlusClick,
+}: {
+  situation: Situation
+  character: SafeCharacter
+  isUnlocked: boolean
+  isActive: boolean
+  onClick: () => void
+  onHover: () => void
+  onHoverEnd: () => void
+  onPlusClick: () => void
+}) {
+  const [imageError, setImageError] = useState(false)
+  const imageSrc = situation.image || character.image || "/placeholder.svg"
+  const price = MOMENT_PRICES[situation.momentLevel]
+
+  return (
+    <div
+      className={cn(
+        "group relative aspect-[4/5] rounded-2xl overflow-hidden border-2 transition-all duration-500 hover:scale-[1.02] cursor-pointer",
+        isUnlocked
+          ? "bg-green-500/5 border-green-500/30 hover:border-green-500/50"
+          : "bg-[#0a0a0a] border-amber-500/40 hover:border-amber-500/60 animate-pulse-ring",
+        isActive && "scale-[1.02]",
+      )}
+      onClick={onClick}
+      onMouseEnter={onHover}
+      onMouseLeave={onHoverEnd}
+    >
+      {!isUnlocked && (
+        <div className="absolute inset-0 rounded-2xl bg-amber-500/10 animate-pulse opacity-50" />
+      )}
+
+      <div className="absolute inset-0">
+        {!imageError ? (
+          <Image
+            src={imageSrc}
+            alt={situation.title}
+            fill
+            className={cn(
+              "object-cover transition-all duration-700",
+              isUnlocked
+                ? "group-hover:scale-110"
+                : "scale-110 blur-[20px] group-hover:blur-[14px]",
+            )}
+            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            loading="lazy"
+            onError={() => setImageError(true)}
+          />
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-amber-600/80 to-orange-900/80" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-black/60" />
+        {!isUnlocked && (
+          <>
+            <div className="absolute inset-0 bg-gradient-to-br from-amber-900/40 via-red-900/30 to-black/80" />
+            <div
+              className="absolute inset-0 opacity-30"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+                mixBlendMode: "overlay",
+              }}
+            />
+          </>
+        )}
+      </div>
+
+      <div className="absolute top-4 left-4 z-30">
+        <span className="px-3 py-1 rounded-full bg-amber-500/20 backdrop-blur-sm border border-amber-500/40 text-xs font-bold text-amber-300">
+          No turning back
+        </span>
+      </div>
+
+      {!isUnlocked && (
+        <div className="absolute top-4 right-4 z-30">
+          <div className="w-6 h-6 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center border border-white/20">
+            <Lock className="h-3 w-3 text-amber-400" />
+          </div>
+        </div>
+      )}
+
+      <div className="absolute inset-0 flex flex-col justify-end p-6 z-10">
+        <h3 className="text-xl font-semibold text-white mb-2 group-hover:text-amber-300 transition-colors">
+          {situation.title}
+        </h3>
+        {!isUnlocked && (
+          <>
+            <p className="text-sm text-amber-300/80 mb-2 italic leading-relaxed">
+              This moment goes further. The intensity builds, and boundaries blur…
+            </p>
+            <p className="text-xs text-amber-400/60 mb-2 font-mono tracking-wider">
+              He whispers: "•••• •••• •••"
+            </p>
+          </>
+        )}
+        <p className={cn("text-sm mb-4 leading-relaxed line-clamp-2", isUnlocked ? "text-gray-300" : "text-gray-400")}>
+          {situation.description}
+        </p>
+        {isUnlocked ? (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onClick()
+            }}
+            className="w-full py-2.5 px-4 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium text-sm transition-colors"
+          >
+            Start
+          </button>
+        ) : (
+          <>
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onClick()
+              }}
+              className="w-full py-2.5 px-4 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-medium text-sm transition-colors mb-2"
+            >
+              Unlock Dark Side – {price.replace("$", "€")}
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onPlusClick()
+              }}
+              className="text-xs text-amber-400/80 hover:text-amber-400 text-center transition-colors mb-1"
+            >
+              Get WHISPR+ — unlock all moments tonight
+            </button>
+            <p className="text-[10px] text-amber-400/60 text-center">(Best value) from €12.99/mo</p>
+          </>
+        )}
       </div>
     </div>
   )
@@ -428,41 +869,65 @@ function StickyCTABar({
   activeMoment,
   character,
   isUnlocked,
+  isOpeningCheckout,
   onClick,
+  onPlusClick,
 }: {
   activeMoment: Situation | null
   character: SafeCharacter
   isUnlocked: boolean
+  isOpeningCheckout: boolean
   onClick: () => void
+  onPlusClick: () => void
 }) {
   if (!activeMoment) return null
 
   const price = MOMENT_PRICES[activeMoment.momentLevel]
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-violet-500/30 bg-[#0a0a0a]/95 backdrop-blur-md">
+    <div className="fixed bottom-0 left-0 right-0 z-50 border-t backdrop-blur-md transition-colors border-violet-500/30 bg-[#0a0a0a]/95">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
           <div className="flex-1 min-w-0">
             <span className="text-sm sm:text-base font-semibold text-white">
               {isUnlocked
                 ? `Start ${activeMoment.title}`
-                : `Unlock ${activeMoment.title} — ${price}`}
+                : `Unlock ${activeMoment.title} — ${price.replace("$", "€")}`}
             </span>
             <p className="text-[10px] sm:text-xs text-gray-400 mt-1">Unlock in seconds • Instant access</p>
           </div>
-          <button
-            onClick={onClick}
-            className={cn(
-              "px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg font-medium text-sm sm:text-base transition-colors",
-              isUnlocked
-                ? "bg-violet-600 hover:bg-violet-700 text-white"
-                : "bg-violet-600 hover:bg-violet-700 text-white",
-            )}
-          >
-            {isUnlocked ? "Start" : "Unlock now"}
-          </button>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onClick()
+              }}
+              disabled={isOpeningCheckout}
+              className={cn(
+                "px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg font-medium text-sm sm:text-base transition-colors disabled:opacity-50",
+                isUnlocked
+                  ? "bg-violet-600 hover:bg-violet-700 text-white"
+                  : "bg-violet-600 hover:bg-violet-700 text-white",
+              )}
+            >
+              {isOpeningCheckout ? "Opening checkout..." : isUnlocked ? "Start" : "Unlock now"}
+            </button>
+          </div>
         </div>
+        {!isUnlocked && activeMoment.momentLevel !== "free" && (
+          <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-white/5">
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onPlusClick()
+              }}
+              disabled={isOpeningCheckout}
+              className="text-xs text-violet-400/80 hover:text-violet-400 transition-colors disabled:opacity-50"
+            >
+              Get WHISPR+ (Best value) — unlock all moments tonight
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -483,7 +948,17 @@ export default function CharacterPage() {
   const [entitlements, setEntitlements] = useState<Entitlements | null>(null)
   const [loading, setLoading] = useState(true)
   const [activeMoment, setActiveMoment] = useState<Situation | null>(null)
-  const [checkingOut, setCheckingOut] = useState(false)
+  const [isOpeningCheckout, setIsOpeningCheckout] = useState(false)
+
+  // Subscribe to checkout lock
+  useEffect(() => {
+    const checkLock = () => {
+      setIsOpeningCheckout(getIsOpeningCheckout())
+    }
+    checkLock()
+    const interval = setInterval(checkLock, 100)
+    return () => clearInterval(interval)
+  }, [])
 
   // Load character data
   useEffect(() => {
@@ -518,24 +993,27 @@ export default function CharacterPage() {
 
   // Handle moment click
   const handleMomentClick = (situation: Situation) => {
-    if (!character) return
+    if (!character || isOpeningCheckout) return
+
+    // Handle WHISPR+ click
+    if (situation.id === "plus") {
+      handleCheckout(situation)
+      return
+    }
 
     const isUnlocked = isMomentUnlocked(situation, character.id, entitlements)
 
     if (isUnlocked) {
-      // Navigate to chat
       router.push(`/chat/${character.id}?situation=${situation.id}`)
     } else {
-      // Handle checkout
       handleCheckout(situation)
     }
   }
 
   // Handle checkout
   const handleCheckout = async (situation: Situation) => {
-    if (!character || checkingOut) return
+    if (!character || isOpeningCheckout || getIsOpeningCheckout()) return
 
-    // If auth is still loading, wait
     if (authLoading) {
       console.log("[CHARACTER_PAGE] Auth loading, waiting...")
       return
@@ -544,25 +1022,31 @@ export default function CharacterPage() {
     // If not logged in, open auth modal
     if (!isLoggedIn) {
       openModal({
-        type: "open_character",
+        type: "checkout",
+        purchaseType: situation.id === "plus" ? "plus" : "moment",
         characterId: character.id,
-        scrollTo: "moments",
+        situationId: situation.id === "plus" ? undefined : situation.id,
+        momentLevel: situation.momentLevel === "free" ? "private" : situation.momentLevel,
       })
       return
     }
 
     // User is logged in - proceed to checkout
-    setCheckingOut(true)
     try {
-      await openStripeCheckoutWithPurchaseType({
-        purchaseType: "moment",
-        characterId: character.id,
-        situationId: situation.id,
-        momentLevel: situation.momentLevel,
-      })
+      if (situation.id === "plus") {
+        await openStripeCheckoutWithPurchaseType({
+          purchaseType: "plus",
+        })
+      } else {
+        await openStripeCheckoutWithPurchaseType({
+          purchaseType: "moment",
+          characterId: character.id,
+          situationId: situation.id,
+          momentLevel: situation.momentLevel,
+        })
+      }
     } catch (error) {
       console.error("[CHARACTER_PAGE] Checkout error:", error)
-      setCheckingOut(false)
     }
   }
 
@@ -597,7 +1081,9 @@ export default function CharacterPage() {
 
   // Determine if active moment is unlocked
   const activeMomentUnlocked = activeMoment
-    ? isMomentUnlocked(activeMoment, character.id, entitlements)
+    ? activeMoment.id === "plus"
+      ? false
+      : isMomentUnlocked(activeMoment, character.id, entitlements)
     : false
 
   // Favorite state
@@ -614,6 +1100,7 @@ export default function CharacterPage() {
           <ArrowLeft className="h-4 w-4" />
           Back
         </Link>
+        <HeroSection character={character} />
       </div>
 
       {/* Right panel - content */}
@@ -631,15 +1118,17 @@ export default function CharacterPage() {
 
         {/* Main content */}
         <div className="flex-1 overflow-y-auto px-6 lg:px-10 xl:px-16 py-8 lg:py-12 pb-24 sm:pb-28">
-          <HeroSection character={character} />
+          {/* Mobile hero */}
+          <div className="lg:hidden mb-8">
+            <HeroSection character={character} />
+          </div>
 
           <MomentsGallery
             character={character}
             entitlements={entitlements}
-            onMomentClick={(situation) => {
-              setActiveMoment(situation)
-              handleMomentClick(situation)
-            }}
+            activeMoment={activeMoment}
+            onMomentClick={handleMomentClick}
+            onMomentHover={setActiveMoment}
           />
 
           {/* Save button */}
@@ -665,7 +1154,20 @@ export default function CharacterPage() {
         activeMoment={activeMoment}
         character={character}
         isUnlocked={activeMomentUnlocked}
+        isOpeningCheckout={isOpeningCheckout}
         onClick={() => activeMoment && handleMomentClick(activeMoment)}
+        onPlusClick={() => {
+          if (activeMoment) {
+            handleMomentClick({
+              id: "plus",
+              title: "WHISPR Plus",
+              description: "",
+              tags: [],
+              isPaid: true,
+              momentLevel: "private",
+            })
+          }
+        }}
       />
     </div>
   )
