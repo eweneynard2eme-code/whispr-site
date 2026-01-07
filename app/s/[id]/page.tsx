@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
-import { ArrowLeft, Lock, Star, Sparkles } from "lucide-react"
+import { ArrowLeft, Lock, Star } from "lucide-react"
 import { getCharacterById, type Character } from "@/lib/data"
 import { cn } from "@/lib/utils"
 import { userStore } from "@/lib/user-store"
@@ -41,7 +41,6 @@ interface Entitlements {
   }>
 }
 
-// Safe character model with guaranteed defaults
 interface SafeCharacter {
   id: string
   name: string
@@ -58,7 +57,6 @@ const MOMENT_PRICES: Record<MomentLevel, number> = {
   exclusive: 699,
 }
 
-// Format price consistently as EUR
 function formatPrice(cents: number): string {
   if (cents === 0) return "Free"
   return `€${(cents / 100).toFixed(2)}`
@@ -100,10 +98,8 @@ async function loadCharacterData(id: string | undefined): Promise<SafeCharacter 
 function buildSafeSituations(character: Character): Situation[] {
   if (Array.isArray(character.situations) && character.situations.length > 0) {
     return character.situations.map((s, idx) => {
-      // Determine moment level based on position and isPaid
       let momentLevel: MomentLevel = "free"
       if (s.isPaid) {
-        // First paid = private, second = intimate, third+ = exclusive
         const paidIndex = character.situations.filter((sit) => sit.isPaid).indexOf(s)
         if (paidIndex === 0) momentLevel = "private"
         else if (paidIndex === 1) momentLevel = "intimate"
@@ -123,12 +119,12 @@ function buildSafeSituations(character: Character): Situation[] {
     })
   }
 
-  // Default situations
+  // Default situations with exact copy
   return [
     {
       id: "free1",
       title: "Late night talk",
-      description: "A calm, quiet conversation where anything can happen.",
+      description: "A calm chat in bed. You can say anything.",
       tags: ["calm", "quiet"],
       isPaid: false,
       momentLevel: "free",
@@ -137,7 +133,7 @@ function buildSafeSituations(character: Character): Situation[] {
     {
       id: "private1",
       title: "Private moment",
-      description: "A conversation that doesn't happen in public.",
+      description: "Just you two. He sits closer… and doesn't move away.",
       tags: ["private", "personal"],
       isPaid: true,
       momentLevel: "private",
@@ -146,7 +142,7 @@ function buildSafeSituations(character: Character): Situation[] {
     {
       id: "intimate1",
       title: "Intimate moment",
-      description: "He lowers his voice. This moment brings you closer.",
+      description: "His voice gets low. The tension starts to build.",
       tags: ["intimate", "closer"],
       isPaid: true,
       momentLevel: "intimate",
@@ -154,8 +150,8 @@ function buildSafeSituations(character: Character): Situation[] {
     },
     {
       id: "exclusive1",
-      title: "Exclusive moment",
-      description: "Some moments are only shared once.",
+      title: "Dark side",
+      description: "This goes further. Once you open it… you can't unsee it.",
       tags: ["exclusive", "rare"],
       isPaid: true,
       momentLevel: "exclusive",
@@ -232,68 +228,99 @@ function isMomentUnlocked(
 }
 
 // ============================================================================
-// COMPONENT: Hero Section
+// COMPONENT: Hero Poster (Left Side)
 // ============================================================================
 
-function HeroSection({ character }: { character: SafeCharacter }) {
+function HeroPoster({ character }: { character: SafeCharacter }) {
   const [imageError, setImageError] = useState(false)
-  const firstName = getFirstName(character.name)
+  const [scrollY, setScrollY] = useState(0)
   const gradient = getCharacterGradient(character.name)
+  const shortTagline = character.description
+    ? character.description.split(".")[0] || character.description.slice(0, 60)
+    : ""
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollContainer = document.querySelector('[data-scroll-container]')
+      if (scrollContainer) {
+        setScrollY(scrollContainer.scrollTop || window.scrollY)
+      } else {
+        setScrollY(window.scrollY)
+      }
+    }
+    const scrollContainer = document.querySelector('[data-scroll-container]')
+    if (scrollContainer) {
+      scrollContainer.addEventListener('scroll', handleScroll)
+      return () => scrollContainer.removeEventListener('scroll', handleScroll)
+    } else {
+      window.addEventListener('scroll', handleScroll)
+      return () => window.removeEventListener('scroll', handleScroll)
+    }
+  }, [])
+
+  const parallaxScale = 1 + scrollY * 0.0001
+  const parallaxTranslate = scrollY * 0.1
 
   return (
-    <section className="mb-8">
-      {/* Mobile image */}
-      <div className="lg:hidden relative w-full aspect-[3/4] max-w-xs mx-auto mb-6 rounded-2xl overflow-hidden shadow-2xl">
+    <div className="hidden lg:flex lg:w-[55%] xl:w-[60%] relative min-h-screen overflow-hidden">
+      <Link
+        href="/discover"
+        className="absolute top-6 left-6 z-30 flex items-center gap-2 text-sm text-white/80 hover:text-white transition-colors"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back
+      </Link>
+
+      {/* Blurred background image with parallax */}
+      <div className="absolute inset-0">
         {!imageError && character.image ? (
           <Image
             src={character.image}
             alt={character.name}
             fill
-            className="object-cover"
+            className="object-cover blur-[2px]"
             priority
             onError={() => setImageError(true)}
+            style={{
+              transform: `scale(${parallaxScale}) translateY(${parallaxTranslate}px)`,
+              transition: 'transform 0.1s ease-out',
+            }}
           />
         ) : (
-          <div className={cn("absolute inset-0 bg-gradient-to-br flex items-center justify-center", gradient)}>
-            <span className="text-4xl font-semibold text-white">{getInitial(character.name)}</span>
-          </div>
+          <div className={cn("absolute inset-0 bg-gradient-to-br", gradient)} />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+        {/* Vignette overlay */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background: "radial-gradient(circle at center, transparent 0%, transparent 30%, rgba(0,0,0,0.7) 100%)",
+          }}
+        />
+        {/* Dark gradient bottom */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
+        {/* Subtle grain overlay */}
+        <div
+          className="absolute inset-0 opacity-[0.03]"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+            mixBlendMode: "overlay",
+          }}
+        />
       </div>
 
-      {/* Desktop image */}
-      <div className="hidden lg:flex w-[45%] xl:w-[40%] relative">
-        {!imageError && character.image ? (
-          <Image
-            src={character.image}
-            alt={character.name}
-            fill
-            className="object-cover"
-            priority
-            onError={() => setImageError(true)}
-          />
-        ) : (
-          <div className={cn("absolute inset-0 bg-gradient-to-br flex items-center justify-center", gradient)}>
-            <div className="w-40 h-40 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center border border-white/20">
-              <span className="text-6xl font-semibold text-white">{getInitial(character.name)}</span>
-            </div>
-          </div>
-        )}
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-[#0a0a0a]" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
-      </div>
-
-      {/* Character info - reduced prominence */}
-      <div className="lg:absolute lg:bottom-8 lg:left-8 lg:right-8 z-20">
-        <h1 className="text-3xl lg:text-4xl xl:text-5xl font-bold text-white mb-2 tracking-tight line-clamp-2">
+      {/* Bottom-left text */}
+      <div className="absolute bottom-0 left-0 right-0 p-8 lg:p-12 z-20">
+        <h1 className="text-4xl lg:text-5xl xl:text-6xl font-bold text-white mb-3 tracking-tight line-clamp-2">
           {character.name}
         </h1>
-        <p className="text-base lg:text-lg text-gray-300 mb-3 max-w-xl leading-relaxed line-clamp-2">
-          {character.description}
-        </p>
+        {shortTagline && (
+          <p className="text-lg lg:text-xl text-gray-300 mb-4 max-w-xl leading-relaxed line-clamp-2">
+            {shortTagline}
+          </p>
+        )}
         {character.tags.length > 0 && (
           <div className="flex flex-wrap gap-2">
-            {character.tags.slice(0, 5).map((tag, idx) => (
+            {character.tags.slice(0, 4).map((tag, idx) => (
               <span key={idx} className="text-xs text-gray-400 lowercase tracking-wide">
                 {tag} ·
               </span>
@@ -301,7 +328,7 @@ function HeroSection({ character }: { character: SafeCharacter }) {
           </div>
         )}
       </div>
-    </section>
+    </div>
   )
 }
 
@@ -312,12 +339,24 @@ function HeroSection({ character }: { character: SafeCharacter }) {
 function TonightsPath({
   activeTier,
   onTierHover,
+  onTierClick,
+  freeMoments,
+  privateMoments,
+  intimateMoments,
+  exclusiveMoments,
 }: {
   activeTier: "warm-up" | "closer" | "dark-side" | null
   onTierHover: (tier: "warm-up" | "closer" | "dark-side" | null) => void
+  onTierClick: (tier: "warm-up" | "closer" | "dark-side") => void
+  freeMoments: Situation[]
+  privateMoments: Situation[]
+  intimateMoments: Situation[]
+  exclusiveMoments: Situation[]
 }) {
   return (
-    <div className="mb-8 flex items-center justify-center gap-4 text-xs">
+    <div className="mb-6">
+      <p className="text-xs text-gray-500/60 text-center mb-3">Choose your intensity</p>
+      <div className="flex items-center justify-center gap-3 text-xs">
       <div
         className={cn(
           "flex items-center gap-2 transition-all duration-300 cursor-pointer",
@@ -325,6 +364,10 @@ function TonightsPath({
         )}
         onMouseEnter={() => onTierHover("warm-up")}
         onMouseLeave={() => onTierHover(null)}
+        onClick={() => {
+          const moment = freeMoments[0]
+          if (moment) onTierClick("warm-up")
+        }}
       >
         <div
           className={cn(
@@ -332,16 +375,11 @@ function TonightsPath({
             activeTier === "warm-up" ? "scale-125 bg-violet-500" : "bg-violet-400",
           )}
         />
-        <span
-          className={cn(
-            "transition-colors",
-            activeTier === "warm-up" ? "text-violet-400 font-medium" : "text-gray-500",
-          )}
-        >
+        <span className={cn("transition-colors", activeTier === "warm-up" ? "text-violet-400 font-medium" : "text-gray-500")}>
           Start gentle
         </span>
       </div>
-      <div className={cn("w-8 h-px transition-opacity", activeTier === "warm-up" || activeTier === "closer" ? "bg-gray-600" : "bg-gray-800 opacity-40")} />
+      <div className={cn("w-6 h-px transition-opacity", activeTier === "warm-up" || activeTier === "closer" ? "bg-gray-600" : "bg-gray-800 opacity-40")} />
       <div
         className={cn(
           "flex items-center gap-2 transition-all duration-300 cursor-pointer",
@@ -349,6 +387,10 @@ function TonightsPath({
         )}
         onMouseEnter={() => onTierHover("closer")}
         onMouseLeave={() => onTierHover(null)}
+        onClick={() => {
+          const moment = intimateMoments[0] || privateMoments[0]
+          if (moment) onTierClick("closer")
+        }}
       >
         <div
           className={cn(
@@ -356,16 +398,11 @@ function TonightsPath({
             activeTier === "closer" ? "scale-125 bg-violet-600" : "bg-violet-500",
           )}
         />
-        <span
-          className={cn(
-            "transition-colors",
-            activeTier === "closer" ? "text-violet-400 font-medium" : "text-gray-500",
-          )}
-        >
+        <span className={cn("transition-colors", activeTier === "closer" ? "text-violet-400 font-medium" : "text-gray-500")}>
           Gets closer
         </span>
       </div>
-      <div className={cn("w-8 h-px transition-opacity", activeTier === "closer" || activeTier === "dark-side" ? "bg-gray-600" : "bg-gray-800 opacity-40")} />
+      <div className={cn("w-6 h-px transition-opacity", activeTier === "closer" || activeTier === "dark-side" ? "bg-gray-600" : "bg-gray-800 opacity-40")} />
       <div
         className={cn(
           "flex items-center gap-2 transition-all duration-300 cursor-pointer",
@@ -373,6 +410,10 @@ function TonightsPath({
         )}
         onMouseEnter={() => onTierHover("dark-side")}
         onMouseLeave={() => onTierHover(null)}
+        onClick={() => {
+          const moment = exclusiveMoments[0]
+          if (moment) onTierClick("dark-side")
+        }}
       >
         <div
           className={cn(
@@ -380,21 +421,17 @@ function TonightsPath({
             activeTier === "dark-side" ? "scale-125 bg-amber-600" : "bg-amber-500",
           )}
         />
-        <span
-          className={cn(
-            "transition-colors",
-            activeTier === "dark-side" ? "text-amber-400 font-medium" : "text-gray-500",
-          )}
-        >
+        <span className={cn("transition-colors", activeTier === "dark-side" ? "text-amber-400 font-medium" : "text-gray-500")}>
           No turning back
         </span>
       </div>
+    </div>
     </div>
   )
 }
 
 // ============================================================================
-// COMPONENT: Moment Cards (3 Tiers)
+// COMPONENT: Moment Cards
 // ============================================================================
 
 function MomentsGallery({
@@ -449,7 +486,7 @@ function MomentsGallery({
             const moment = freeMoments[0]
             if (moment) onMomentHover(moment)
           } else if (tier === "closer") {
-            const moment = privateMoments[0] || intimateMoments[0]
+            const moment = intimateMoments[0] || privateMoments[0]
             if (moment) onMomentHover(moment)
           } else if (tier === "dark-side") {
             const moment = exclusiveMoments[0]
@@ -458,12 +495,28 @@ function MomentsGallery({
             onMomentHover(null)
           }
         }}
+        onTierClick={(tier) => {
+          if (tier === "warm-up") {
+            const moment = freeMoments[0]
+            if (moment) onMomentHover(moment)
+          } else if (tier === "closer") {
+            const moment = intimateMoments[0] || privateMoments[0]
+            if (moment) onMomentHover(moment)
+          } else if (tier === "dark-side") {
+            const moment = exclusiveMoments[0]
+            if (moment) onMomentHover(moment)
+          }
+        }}
+        freeMoments={freeMoments}
+        privateMoments={privateMoments}
+        intimateMoments={intimateMoments}
+        exclusiveMoments={exclusiveMoments}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
         {/* Tier A: Warm-up (Free) */}
         {freeMoments.map((situation) => (
-          <MomentCardTierA
+          <MomentCardFree
             key={situation.id}
             situation={situation}
             character={character}
@@ -474,16 +527,17 @@ function MomentsGallery({
           />
         ))}
 
-        {/* Tier B: Closer (Premium) - Private */}
+        {/* Tier B: Private */}
         {privateMoments.map((situation) => {
           const isUnlocked = isMomentUnlocked(situation, character.id, entitlements)
           return (
-            <MomentCardTierB
+            <MomentCardPremium
               key={situation.id}
               situation={situation}
               character={character}
               isUnlocked={isUnlocked}
               isActive={activeMoment?.id === situation.id}
+              tier="private"
               onClick={() => onMomentClick(situation)}
               onHover={() => onMomentHover(situation)}
               onHoverEnd={() => onMomentHover(null)}
@@ -501,16 +555,17 @@ function MomentsGallery({
           )
         })}
 
-        {/* Tier B: Closer (Premium) - Intimate */}
+        {/* Tier B: Intimate */}
         {intimateMoments.map((situation) => {
           const isUnlocked = isMomentUnlocked(situation, character.id, entitlements)
           return (
-            <MomentCardTierBIntimate
+            <MomentCardPremium
               key={situation.id}
               situation={situation}
               character={character}
               isUnlocked={isUnlocked}
               isActive={activeMoment?.id === situation.id}
+              tier="intimate"
               onClick={() => onMomentClick(situation)}
               onHover={() => onMomentHover(situation)}
               onHoverEnd={() => onMomentHover(null)}
@@ -528,11 +583,11 @@ function MomentsGallery({
           )
         })}
 
-        {/* Tier C: Dark side (Exclusive) */}
+        {/* Tier C: Dark side */}
         {exclusiveMoments.map((situation) => {
           const isUnlocked = isMomentUnlocked(situation, character.id, entitlements)
           return (
-            <MomentCardTierC
+            <MomentCardDarkSide
               key={situation.id}
               situation={situation}
               character={character}
@@ -559,8 +614,8 @@ function MomentsGallery({
   )
 }
 
-// Tier A: Warm-up (Free)
-function MomentCardTierA({
+// Free moment card
+function MomentCardFree({
   situation,
   character,
   isActive,
@@ -576,15 +631,31 @@ function MomentCardTierA({
   onHoverEnd: () => void
 }) {
   const [imageError, setImageError] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
   const imageSrc = situation.image || character.image || "/placeholder.svg"
+
+  useEffect(() => {
+    setIsMobile(window.innerWidth < 768)
+  }, [])
+
+  const handleCardClick = (e: React.MouseEvent) => {
+    if (isMobile) {
+      e.preventDefault()
+      onHover() // Select on mobile tap
+    } else {
+      onClick() // Direct action on desktop
+    }
+  }
 
   return (
     <div
       className={cn(
-        "group relative aspect-[4/5] rounded-2xl overflow-hidden border border-white/10 bg-[#1a1a1a] transition-all duration-500 hover:scale-[1.02] hover:border-white/20 hover:shadow-2xl hover:shadow-violet-500/10 cursor-pointer",
-        isActive && "border-violet-500/50 scale-[1.02]",
+        "group relative h-[440px] lg:h-[520px] rounded-2xl overflow-hidden border border-white/10 bg-[#1a1a1a] transition-all duration-500 cursor-pointer",
+        isActive
+          ? "scale-[1.02] border-violet-500/50 shadow-2xl shadow-violet-500/20 z-10"
+          : "opacity-65 scale-[0.97] lg:blur-[1px] hover:opacity-100 hover:scale-[1.0] hover:blur-0 hover:border-white/20",
       )}
-      onClick={onClick}
+      onClick={handleCardClick}
       onMouseEnter={onHover}
       onMouseLeave={onHoverEnd}
     >
@@ -595,48 +666,51 @@ function MomentCardTierA({
             alt={situation.title || "Moment"}
             fill
             className="object-cover transition-transform duration-700 group-hover:scale-110"
-            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 50vw"
             loading="lazy"
             onError={() => setImageError(true)}
           />
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-violet-600/80 to-purple-900/80" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent" />
       </div>
 
       <div className="absolute top-3 left-3 z-20">
-        <span className="px-3 py-1 rounded-full bg-violet-500/20 backdrop-blur-sm border border-violet-500/30 text-xs font-medium text-violet-300">
+        <span className="px-2.5 py-1 rounded-full bg-violet-500/20 backdrop-blur-sm border border-violet-500/30 text-[10px] font-medium text-violet-300">
           Start gentle
         </span>
       </div>
 
-      <div className="absolute inset-0 flex flex-col justify-end p-6 z-10">
-        <h3 className="text-xl font-semibold text-white mb-2 group-hover:text-violet-300 transition-colors line-clamp-2">
-          {situation.title || "Untitled"}
+      <div className="absolute bottom-0 left-0 right-0 p-6 z-10 bg-gradient-to-t from-black/75 via-black/60 to-transparent">
+        <h3 className="text-xl font-semibold text-white mb-1.5 line-clamp-1 pr-4">
+          {situation.title || "Late night talk"}
         </h3>
-        <p className="text-sm text-gray-300 mb-4 leading-relaxed line-clamp-2">{situation.description || ""}</p>
+        <p className="text-sm text-gray-300 mb-4 line-clamp-1">
+          {situation.description || "A calm chat in bed. You can say anything."}
+        </p>
         <button
           onClick={(e) => {
             e.stopPropagation()
             onClick()
           }}
-          className="w-full py-2.5 px-4 rounded-lg bg-violet-600 hover:bg-violet-700 text-white font-medium text-sm transition-colors mb-1"
+          className="w-full h-12 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-semibold text-base transition-colors mb-1.5 shadow-lg shadow-violet-500/30"
         >
           Start
         </button>
-        <p className="text-[10px] text-violet-400/60 text-center">Instant access</p>
+        <p className="text-[10px] text-violet-400/60 text-center">Instant access • Secure checkout</p>
       </div>
     </div>
   )
 }
 
-// Tier B: Closer (Premium) - Private
-function MomentCardTierB({
+// Premium moment card (Private/Intimate)
+function MomentCardPremium({
   situation,
   character,
   isUnlocked,
   isActive,
+  tier,
   onClick,
   onHover,
   onHoverEnd,
@@ -646,25 +720,55 @@ function MomentCardTierB({
   character: SafeCharacter
   isUnlocked: boolean
   isActive: boolean
+  tier: "private" | "intimate"
   onClick: () => void
   onHover: () => void
   onHoverEnd: () => void
   onPlusClick: () => void
 }) {
   const [imageError, setImageError] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
   const imageSrc = situation.image || character.image || "/placeholder.svg"
   const price = formatPrice(MOMENT_PRICES[situation.momentLevel])
+  
+  const isPrivate = tier === "private"
+  const title = isPrivate ? "Private moment" : "Intimate moment"
+  const description = isPrivate
+    ? "Just you two. He sits closer… and doesn't move away."
+    : "His voice gets low. The tension starts to build."
+
+  useEffect(() => {
+    setIsMobile(window.innerWidth < 768)
+  }, [])
+
+  const handleCardClick = (e: React.MouseEvent) => {
+    if (isMobile) {
+      e.preventDefault()
+      onHover() // Select on mobile tap
+    } else {
+      onClick() // Direct action on desktop
+    }
+  }
 
   return (
     <div
       className={cn(
-        "group relative aspect-[4/5] rounded-2xl overflow-hidden border transition-all duration-500 hover:scale-[1.02] cursor-pointer",
+        "group relative h-[440px] lg:h-[520px] rounded-2xl overflow-hidden border transition-all duration-500 cursor-pointer",
         isUnlocked
-          ? "bg-green-500/5 border-green-500/30 hover:border-green-500/50"
-          : "bg-[#1a1a1a] border-violet-500/30 hover:border-violet-500/50",
-        isActive && "scale-[1.02]",
+          ? "bg-green-500/5 border-green-500/30"
+          : isPrivate
+            ? "bg-[#1a1a1a] border-violet-500/30"
+            : "bg-[#1a1a1a] border-pink-500/30",
+        isActive
+          ? isPrivate
+            ? "scale-[1.02] border-violet-500/50 shadow-2xl shadow-violet-500/20 z-10"
+            : "scale-[1.02] border-pink-500/50 shadow-2xl shadow-pink-500/20 z-10"
+          : "opacity-65 scale-[0.97] lg:blur-[1px] hover:opacity-100 hover:scale-[1.0] hover:blur-0",
+        isPrivate
+          ? "hover:border-violet-500/50"
+          : "hover:border-pink-500/50",
       )}
-      onClick={onClick}
+      onClick={handleCardClick}
       onMouseEnter={onHover}
       onMouseLeave={onHoverEnd}
     >
@@ -672,52 +776,70 @@ function MomentCardTierB({
         {!imageError ? (
           <Image
             src={imageSrc}
-            alt={situation.title || "Moment"}
+            alt={title}
             fill
             className="object-cover transition-transform duration-700 group-hover:scale-110"
-            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 50vw"
             loading="lazy"
             onError={() => setImageError(true)}
           />
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-violet-600/80 to-purple-900/80" />
+          <div className={cn("absolute inset-0 bg-gradient-to-br", isPrivate ? "from-violet-600/80 to-purple-900/80" : "from-pink-600/80 to-rose-900/80")} />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-black/20" />
-        {!isUnlocked && <div className="absolute inset-0 bg-gradient-to-br from-violet-900/40 via-purple-900/30 to-transparent" />}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/50 to-black/20" />
+        {!isUnlocked && (
+          <div
+            className={cn(
+              "absolute inset-0 bg-gradient-to-br",
+              isPrivate ? "from-violet-900/40 via-purple-900/30 to-transparent" : "from-pink-900/40 via-rose-900/30 to-transparent",
+            )}
+          />
+        )}
       </div>
 
-      <div className="absolute top-3 left-3 z-20">
-        <span className="px-3 py-1 rounded-full bg-violet-500/20 backdrop-blur-sm border border-violet-500/30 text-xs font-medium text-violet-300">
+      <div className={cn("absolute top-3 left-3 z-20")}>
+        <span
+          className={cn(
+            "px-2.5 py-1 rounded-full backdrop-blur-sm border text-[10px] font-medium",
+            isPrivate
+              ? "bg-violet-500/20 border-violet-500/30 text-violet-300"
+              : "bg-pink-500/20 border-pink-500/30 text-pink-300",
+          )}
+        >
           Gets closer
         </span>
       </div>
 
       {!isUnlocked && (
         <div className="absolute top-3 right-3 z-20 flex items-center gap-2">
-          <span className="px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-sm border border-white/20 text-[10px] font-medium text-violet-300/90 whitespace-nowrap">
+          <span
+            className={cn(
+              "px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-sm border border-white/20 text-[10px] font-medium whitespace-nowrap",
+              isPrivate ? "text-violet-300/90" : "text-pink-300/90",
+            )}
+          >
             Locked
           </span>
           <div className="w-6 h-6 rounded-full bg-black/70 backdrop-blur-sm flex items-center justify-center border border-white/20 shrink-0">
-            <Lock className="h-3 w-3 text-violet-400" />
+            <Lock className={cn("h-3 w-3", isPrivate ? "text-violet-400" : "text-pink-400")} />
           </div>
         </div>
       )}
 
-      <div className="absolute inset-0 flex flex-col justify-end p-6 z-10">
-        <h3 className="text-xl font-semibold text-white mb-2 group-hover:text-violet-300 transition-colors line-clamp-2">
-          {situation.title || "Untitled"}
+      <div className="absolute bottom-0 left-0 right-0 p-6 z-10 bg-gradient-to-t from-black/75 via-black/60 to-transparent">
+        <h3 className="text-xl font-semibold text-white mb-1.5 line-clamp-1 pr-20">
+          {situation.title || title}
         </h3>
-        {!isUnlocked && (
-          <p className="text-sm text-violet-300/80 mb-2 italic leading-relaxed">He gets closer than usual…</p>
-        )}
-        <p className="text-sm text-gray-300 mb-4 leading-relaxed line-clamp-2">{situation.description || ""}</p>
+        <p className="text-sm text-gray-300 mb-4 line-clamp-1">
+          {situation.description || description}
+        </p>
         {isUnlocked ? (
           <button
             onClick={(e) => {
               e.stopPropagation()
               onClick()
             }}
-            className="w-full py-2.5 px-4 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium text-sm transition-colors"
+            className="w-full h-12 rounded-xl bg-green-600 hover:bg-green-700 text-white font-semibold text-base transition-colors mb-1.5 shadow-lg shadow-green-500/30"
           >
             Start
           </button>
@@ -728,7 +850,12 @@ function MomentCardTierB({
                 e.stopPropagation()
                 onClick()
               }}
-              className="w-full py-2.5 px-4 rounded-lg bg-violet-600 hover:bg-violet-700 text-white font-medium text-sm transition-colors mb-2"
+              className={cn(
+                "w-full h-12 rounded-xl font-semibold text-base transition-colors mb-2 shadow-lg",
+                isPrivate
+                  ? "bg-violet-600 hover:bg-violet-700 text-white shadow-violet-500/30"
+                  : "bg-pink-600 hover:bg-pink-700 text-white shadow-pink-500/30",
+              )}
             >
               Unlock now — {price}
             </button>
@@ -737,11 +864,14 @@ function MomentCardTierB({
                 e.stopPropagation()
                 onPlusClick()
               }}
-              className="text-xs text-violet-400/80 hover:text-violet-400 text-center transition-colors mb-1"
+              className={cn(
+                "text-xs text-center transition-colors mb-1",
+                isPrivate ? "text-violet-400/80 hover:text-violet-400" : "text-pink-400/80 hover:text-pink-400",
+              )}
             >
-              Get WHISPR+ — unlock all moments tonight
+              Get WHISPR+ — unlock all tonight (Best value)
             </button>
-            <p className="text-[10px] text-violet-400/60 text-center">(Best value) from €12.99/mo</p>
+            <p className="text-[10px] text-gray-400 text-center">Instant access • Secure checkout</p>
           </>
         )}
       </div>
@@ -749,8 +879,8 @@ function MomentCardTierB({
   )
 }
 
-// Tier B: Closer (Premium) - Intimate (distinct visual treatment)
-function MomentCardTierBIntimate({
+// Dark side moment card
+function MomentCardDarkSide({
   situation,
   character,
   isUnlocked,
@@ -770,137 +900,35 @@ function MomentCardTierBIntimate({
   onPlusClick: () => void
 }) {
   const [imageError, setImageError] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
   const imageSrc = situation.image || character.image || "/placeholder.svg"
   const price = formatPrice(MOMENT_PRICES[situation.momentLevel])
+
+  useEffect(() => {
+    setIsMobile(window.innerWidth < 768)
+  }, [])
+
+  const handleCardClick = (e: React.MouseEvent) => {
+    if (isMobile) {
+      e.preventDefault()
+      onHover() // Select on mobile tap
+    } else {
+      onClick() // Direct action on desktop
+    }
+  }
 
   return (
     <div
       className={cn(
-        "group relative aspect-[4/5] rounded-2xl overflow-hidden border transition-all duration-500 hover:scale-[1.02] cursor-pointer",
+        "group relative h-[440px] lg:h-[520px] rounded-2xl overflow-hidden border-2 transition-all duration-500 cursor-pointer",
         isUnlocked
-          ? "bg-green-500/5 border-green-500/30 hover:border-green-500/50"
-          : "bg-[#1a1a1a] border-pink-500/30 hover:border-pink-500/50",
-        isActive && "scale-[1.02]",
+          ? "bg-green-500/5 border-green-500/30"
+          : "bg-[#0a0a0a] border-amber-500/40 animate-pulse-ring",
+        isActive
+          ? "scale-[1.02] border-amber-500/60 shadow-2xl shadow-amber-500/30 z-10"
+          : "opacity-65 scale-[0.97] lg:blur-[1px] hover:opacity-100 hover:scale-[1.0] hover:blur-0 hover:border-amber-500/60",
       )}
-      onClick={onClick}
-      onMouseEnter={onHover}
-      onMouseLeave={onHoverEnd}
-    >
-      <div className="absolute inset-0">
-        {!imageError ? (
-          <Image
-            src={imageSrc}
-            alt={situation.title || "Moment"}
-            fill
-            className="object-cover transition-transform duration-700 group-hover:scale-110"
-            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-            loading="lazy"
-            onError={() => setImageError(true)}
-          />
-        ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-pink-600/80 to-rose-900/80" />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/60 to-black/30" />
-        {!isUnlocked && <div className="absolute inset-0 bg-gradient-to-br from-pink-900/40 via-rose-900/30 to-transparent" />}
-      </div>
-
-      <div className="absolute top-3 left-3 z-20">
-        <span className="px-3 py-1 rounded-full bg-pink-500/20 backdrop-blur-sm border border-pink-500/30 text-xs font-medium text-pink-300">
-          Gets closer
-        </span>
-      </div>
-
-      {!isUnlocked && (
-        <div className="absolute top-3 right-3 z-20 flex items-center gap-2">
-          <span className="px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-sm border border-white/20 text-[10px] font-medium text-pink-300/90 whitespace-nowrap">
-            Locked
-          </span>
-          <div className="w-6 h-6 rounded-full bg-black/70 backdrop-blur-sm flex items-center justify-center border border-white/20 shrink-0">
-            <Lock className="h-3 w-3 text-pink-400" />
-          </div>
-        </div>
-      )}
-
-      <div className="absolute inset-0 flex flex-col justify-end p-6 z-10">
-        <h3 className="text-xl font-semibold text-white mb-2 group-hover:text-pink-300 transition-colors line-clamp-2">
-          {situation.title || "Untitled"}
-        </h3>
-        {!isUnlocked && (
-          <p className="text-sm text-pink-300/80 mb-2 italic leading-relaxed">His voice drops lower, more personal…</p>
-        )}
-        <p className="text-sm text-gray-300 mb-4 leading-relaxed line-clamp-2">{situation.description || ""}</p>
-        {isUnlocked ? (
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              onClick()
-            }}
-            className="w-full py-2.5 px-4 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium text-sm transition-colors"
-          >
-            Start
-          </button>
-        ) : (
-          <>
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                onClick()
-              }}
-              className="w-full py-2.5 px-4 rounded-lg bg-pink-600 hover:bg-pink-700 text-white font-medium text-sm transition-colors mb-2"
-            >
-              Unlock now — {price}
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                onPlusClick()
-              }}
-              className="text-xs text-pink-400/80 hover:text-pink-400 text-center transition-colors mb-1"
-            >
-              Get WHISPR+ — unlock all moments tonight
-            </button>
-            <p className="text-[10px] text-pink-400/60 text-center">(Best value) from €12.99/mo</p>
-          </>
-        )}
-      </div>
-    </div>
-  )
-}
-
-// Tier C: Dark side (Exclusive)
-function MomentCardTierC({
-  situation,
-  character,
-  isUnlocked,
-  isActive,
-  onClick,
-  onHover,
-  onHoverEnd,
-  onPlusClick,
-}: {
-  situation: Situation
-  character: SafeCharacter
-  isUnlocked: boolean
-  isActive: boolean
-  onClick: () => void
-  onHover: () => void
-  onHoverEnd: () => void
-  onPlusClick: () => void
-}) {
-  const [imageError, setImageError] = useState(false)
-  const imageSrc = situation.image || character.image || "/placeholder.svg"
-  const price = formatPrice(MOMENT_PRICES[situation.momentLevel])
-
-  return (
-    <div
-      className={cn(
-        "group relative aspect-[4/5] rounded-2xl overflow-hidden border-2 transition-all duration-500 hover:scale-[1.02] cursor-pointer",
-        isUnlocked
-          ? "bg-green-500/5 border-green-500/30 hover:border-green-500/50"
-          : "bg-[#0a0a0a] border-amber-500/40 hover:border-amber-500/60 animate-pulse-ring",
-        isActive && "scale-[1.02]",
-      )}
-      onClick={onClick}
+      onClick={handleCardClick}
       onMouseEnter={onHover}
       onMouseLeave={onHoverEnd}
     >
@@ -912,15 +940,13 @@ function MomentCardTierC({
         {!imageError ? (
           <Image
             src={imageSrc}
-            alt={situation.title || "Moment"}
+            alt={situation.title || "Dark side"}
             fill
             className={cn(
               "object-cover transition-all duration-700",
-              isUnlocked
-                ? "group-hover:scale-110"
-                : "scale-110 blur-[24px] group-hover:blur-[16px]",
+              isUnlocked ? "group-hover:scale-110" : "scale-110 blur-[24px] group-hover:blur-[16px]",
             )}
-            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 50vw"
             loading="lazy"
             onError={() => setImageError(true)}
           />
@@ -931,14 +957,12 @@ function MomentCardTierC({
         {!isUnlocked && (
           <>
             <div className="absolute inset-0 bg-gradient-to-br from-amber-900/50 via-red-900/40 to-black/90" />
-            {/* Vignette effect */}
-            <div 
+            <div
               className="absolute inset-0"
               style={{
-                background: "radial-gradient(circle at center, transparent 0%, transparent 40%, rgba(0,0,0,0.6) 100%)"
+                background: "radial-gradient(circle at center, transparent 0%, transparent 40%, rgba(0,0,0,0.6) 100%)",
               }}
             />
-            {/* Grain texture */}
             <div
               className="absolute inset-0 opacity-40"
               style={{
@@ -946,14 +970,21 @@ function MomentCardTierC({
                 mixBlendMode: "overlay",
               }}
             />
+            {/* Inner glow effect */}
+            <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 via-amber-500/10 to-transparent" />
           </>
         )}
       </div>
 
-      <div className="absolute top-3 left-3 z-30">
-        <span className="px-3 py-1 rounded-full bg-amber-500/20 backdrop-blur-sm border border-amber-500/40 text-xs font-bold text-amber-300">
+      <div className="absolute top-3 left-3 z-30 flex items-center gap-2">
+        <span className="px-2.5 py-1 rounded-full bg-amber-500/20 backdrop-blur-sm border border-amber-500/40 text-[10px] font-bold text-amber-300">
           No turning back
         </span>
+        {!isUnlocked && (
+          <span className="px-2 py-0.5 rounded-full bg-red-500/20 backdrop-blur-sm border border-red-500/30 text-[10px] font-medium text-red-300">
+            Not for everyone
+          </span>
+        )}
       </div>
 
       {!isUnlocked && (
@@ -967,25 +998,20 @@ function MomentCardTierC({
         </div>
       )}
 
-      <div className="absolute inset-0 flex flex-col justify-end p-6 z-10">
-        {!isUnlocked && (
-          <p className="text-xs text-amber-400/60 mb-2 font-medium uppercase tracking-wider">Not for everyone</p>
-        )}
-        <h3 className="text-xl font-semibold text-white mb-2 group-hover:text-amber-300 transition-colors line-clamp-2">
-          {situation.title || "Untitled"}
+      <div className="absolute bottom-0 left-0 right-0 p-6 z-10 bg-gradient-to-t from-black/75 via-black/60 to-transparent">
+        <h3 className="text-xl font-semibold text-white mb-1.5 line-clamp-1 pr-20">
+          {situation.title || "Dark side"}
         </h3>
         {!isUnlocked && (
           <>
-            <p className="text-sm text-amber-300/80 mb-2 italic leading-relaxed">
-              This moment goes further. The intensity builds, and boundaries blur…
-            </p>
-            <p className="text-xs text-amber-400/70 mb-2 font-mono tracking-wider">
+            <p className="text-[10px] text-red-400/80 mb-1.5 font-medium">Not for everyone.</p>
+            <p className="text-xs text-amber-400/80 mb-2 font-mono tracking-widest leading-relaxed">
               He whispers: "•••• •••• •••"
             </p>
           </>
         )}
-        <p className={cn("text-sm mb-4 leading-relaxed line-clamp-2", isUnlocked ? "text-gray-300" : "text-gray-400")}>
-          {situation.description || ""}
+        <p className="text-sm text-gray-300 mb-4 line-clamp-1">
+          {situation.description || "This goes further. Once you open it… you can't unsee it."}
         </p>
         {isUnlocked ? (
           <button
@@ -993,7 +1019,7 @@ function MomentCardTierC({
               e.stopPropagation()
               onClick()
             }}
-            className="w-full py-2.5 px-4 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium text-sm transition-colors"
+            className="w-full h-12 rounded-xl bg-green-600 hover:bg-green-700 text-white font-semibold text-base transition-colors mb-1.5 shadow-lg shadow-green-500/30"
           >
             Start
           </button>
@@ -1004,7 +1030,7 @@ function MomentCardTierC({
                 e.stopPropagation()
                 onClick()
               }}
-              className="w-full py-2.5 px-4 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-medium text-sm transition-colors mb-2"
+              className="w-full h-12 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-semibold text-base transition-colors mb-2 shadow-lg shadow-amber-500/30"
             >
               Unlock now — {price}
             </button>
@@ -1015,9 +1041,9 @@ function MomentCardTierC({
               }}
               className="text-xs text-amber-400/80 hover:text-amber-400 text-center transition-colors mb-1"
             >
-              Get WHISPR+ — unlock all moments tonight
+              Get WHISPR+ — unlock all tonight (Best value)
             </button>
-            <p className="text-[10px] text-amber-400/60 text-center">(Best value) from €12.99/mo</p>
+            <p className="text-[10px] text-gray-400 text-center">Instant access • Secure checkout</p>
           </>
         )}
       </div>
@@ -1067,12 +1093,7 @@ function StickyCTABar({
                 onClick()
               }}
               disabled={isOpeningCheckout}
-              className={cn(
-                "px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg font-medium text-sm sm:text-base transition-colors disabled:opacity-50",
-                isUnlocked
-                  ? "bg-violet-600 hover:bg-violet-700 text-white"
-                  : "bg-violet-600 hover:bg-violet-700 text-white",
-              )}
+              className="px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg bg-violet-600 hover:bg-violet-700 text-white font-medium text-sm sm:text-base transition-colors disabled:opacity-50"
             >
               {isOpeningCheckout ? "Opening checkout..." : isUnlocked ? "Start" : "Unlock now"}
             </button>
@@ -1088,7 +1109,7 @@ function StickyCTABar({
               disabled={isOpeningCheckout}
               className="text-xs text-violet-400/80 hover:text-violet-400 transition-colors disabled:opacity-50"
             >
-              Get WHISPR+ (Best value) — unlock all moments tonight
+              Get WHISPR+ — unlock all tonight
             </button>
           </div>
         )}
@@ -1139,10 +1160,12 @@ export default function CharacterPage() {
 
       if (charData) {
         setCharacter(charData)
-        // Set first paid moment as active, or first free moment
-        const firstPaid = charData.situations.find((s) => s.isPaid)
-        const firstFree = charData.situations.find((s) => !s.isPaid)
-        setActiveMoment(firstPaid || firstFree || null)
+        // Default active moment: Intimate if locked, else Private, else Free
+        const intimate = charData.situations.find((s) => s.momentLevel === "intimate")
+        const privateMoment = charData.situations.find((s) => s.momentLevel === "private")
+        const free = charData.situations.find((s) => !s.isPaid)
+        const defaultMoment = intimate || privateMoment || free || null
+        setActiveMoment(defaultMoment)
       }
       setEntitlements(entitlementsData)
       setLoading(false)
@@ -1159,7 +1182,6 @@ export default function CharacterPage() {
   const handleMomentClick = (situation: Situation) => {
     if (!character || isOpeningCheckout) return
 
-    // Handle WHISPR+ click
     if (situation.id === "plus") {
       handleCheckout(situation)
       return
@@ -1183,7 +1205,6 @@ export default function CharacterPage() {
       return
     }
 
-    // If not logged in, open auth modal
     if (!isLoggedIn) {
       openModal({
         type: "checkout",
@@ -1195,7 +1216,6 @@ export default function CharacterPage() {
       return
     }
 
-    // User is logged in - proceed to checkout
     try {
       if (situation.id === "plus") {
         await openStripeCheckoutWithPurchaseType({
@@ -1243,32 +1263,21 @@ export default function CharacterPage() {
     )
   }
 
-  // Determine if active moment is unlocked
   const activeMomentUnlocked = activeMoment
     ? activeMoment.id === "plus"
       ? false
       : isMomentUnlocked(activeMoment, character.id, entitlements)
     : false
 
-  // Favorite state
   const isFavorite = userStore.isFavorite(character.id)
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] flex">
-      {/* Left panel - desktop only */}
-      <div className="hidden lg:flex w-[45%] xl:w-[40%] relative">
-        <Link
-          href="/discover"
-          className="absolute top-6 left-6 z-30 flex items-center gap-2 text-sm text-white/70 hover:text-white transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back
-        </Link>
-        <HeroSection character={character} />
-      </div>
+      {/* Left: Hero Poster (Desktop only) */}
+      <HeroPoster character={character} />
 
-      {/* Right panel - content */}
-      <div className="flex-1 flex flex-col min-h-screen overflow-hidden">
+      {/* Right: Content Area */}
+      <div className="flex-1 flex flex-col min-h-screen overflow-hidden lg:pl-0">
         {/* Mobile header */}
         <div className="lg:hidden px-4 py-4 flex items-center gap-3">
           <Link
@@ -1280,13 +1289,32 @@ export default function CharacterPage() {
           </Link>
         </div>
 
-        {/* Main content */}
-        <div className="flex-1 overflow-y-auto px-6 lg:px-10 xl:px-16 py-8 lg:py-12 pb-24 sm:pb-28">
-          {/* Mobile hero */}
-          <div className="lg:hidden mb-8">
-            <HeroSection character={character} />
+        {/* Mobile hero */}
+        <div className="lg:hidden relative w-full aspect-[3/4] max-w-xs mx-auto mb-6 rounded-2xl overflow-hidden">
+          <div className="absolute inset-0">
+            {character.image ? (
+              <Image
+                src={character.image}
+                alt={character.name}
+                fill
+                className="object-cover"
+                priority
+              />
+            ) : (
+              <div className={cn("absolute inset-0 bg-gradient-to-br", getCharacterGradient(character.name))} />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
           </div>
+          <div className="absolute bottom-0 left-0 right-0 p-6 z-10">
+            <h1 className="text-3xl font-bold text-white mb-2">{character.name}</h1>
+            {character.description && (
+              <p className="text-sm text-gray-300 line-clamp-2">{character.description}</p>
+            )}
+          </div>
+        </div>
 
+        {/* Main content */}
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-6 lg:py-8 pb-32 sm:pb-36" data-scroll-container>
           <MomentsGallery
             character={character}
             entitlements={entitlements}
@@ -1296,7 +1324,7 @@ export default function CharacterPage() {
           />
 
           {/* Save button */}
-          <div className="flex items-center gap-3 pb-8">
+          <div className="flex items-center gap-3 pt-4">
             <button
               onClick={() => userStore.toggleFavorite(character.id)}
               className={cn(
