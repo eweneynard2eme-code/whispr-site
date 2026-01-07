@@ -48,32 +48,79 @@ export function requireEnv(name: string, ...fallbacks: string[]): string {
   return value
 }
 
-// Stripe price IDs with fallback support
+/**
+ * Validates that a price ID is a valid Stripe price ID format
+ * Stripe price IDs start with "price_" followed by alphanumeric characters
+ */
+function isValidStripePriceId(value: string): boolean {
+  if (!value || typeof value !== "string") return false
+  return /^price_[a-zA-Z0-9]+$/.test(value.trim())
+}
+
+/**
+ * Gets a Stripe price ID from environment variables
+ * Returns the value (may be empty string if not set)
+ * Validation happens at runtime when price IDs are used
+ * @param primary - Primary env var name
+ * @param fallbacks - Optional fallback env var names
+ * @returns The price ID value (may be empty if not set)
+ */
+function getStripePriceId(primary: string, ...fallbacks: string[]): string {
+  return getEnv(primary, ...fallbacks).trim()
+}
+
+/**
+ * Validates a Stripe price ID and throws a clear error if invalid
+ * This is called at runtime (in API routes) when price IDs are actually used
+ * @param value - The price ID to validate
+ * @param envVarNames - The environment variable names (for error messages)
+ * @throws Error if price ID is missing or invalid
+ */
+export function validateStripePriceId(value: string, ...envVarNames: string[]): string {
+  if (!value || typeof value !== "string" || value.trim().length === 0) {
+    const allNames = envVarNames.join(" or ")
+    throw new Error(
+      `Missing required Stripe price ID: ${allNames}. ` +
+      `Please set this in your Vercel project settings.`
+    )
+  }
+  
+  const trimmed = value.trim()
+  if (!isValidStripePriceId(trimmed)) {
+    const allNames = envVarNames.join(" or ")
+    throw new Error(
+      `Invalid Stripe price ID format in ${allNames}. ` +
+      `Expected format: price_xxxxx (got: "${trimmed}"). ` +
+      `Please check your Vercel environment variables.`
+    )
+  }
+  
+  return trimmed
+}
+
+// Stripe price IDs - SINGLE SOURCE OF TRUTH
+// All price IDs MUST come from environment variables
+// No hardcoded values, no fallbacks to stale data
+// Validation happens at runtime when used (not at module load)
 export const ENV_STRIPE_PRICES = {
-  PRIVATE_MOMENT: getEnv(
+  PRIVATE_MOMENT: getStripePriceId(
     "STRIPE_PRICE_PRIVATE_MOMENT",
-    "PRICE_ID_MOMENT_PRIVATE",
     "STRIPE_PRICE_ID_PRIVATE_MOMENT"
   ),
-  INTIMATE_MOMENT: getEnv(
+  INTIMATE_MOMENT: getStripePriceId(
     "STRIPE_PRICE_INTIMATE_MOMENT",
-    "PRICE_ID_MOMENT_INTIMATE",
     "STRIPE_PRICE_ID_INTIMATE_MOMENT"
   ),
-  EXCLUSIVE_MOMENT: getEnv(
+  EXCLUSIVE_MOMENT: getStripePriceId(
     "STRIPE_PRICE_EXCLUSIVE_MOMENT",
-    "PRICE_ID_MOMENT_EXCLUSIVE",
     "STRIPE_PRICE_ID_EXCLUSIVE_MOMENT"
   ),
-  PRIVATE_PHOTO: getEnv(
+  PRIVATE_PHOTO: getStripePriceId(
     "STRIPE_PRICE_PRIVATE_PHOTO",
-    "PRICE_ID_PRIVATE_PHOTO",
     "STRIPE_PRICE_ID_PRIVATE_PHOTO"
   ),
-  WHISPR_PLUS_MONTHLY: getEnv(
+  WHISPR_PLUS_MONTHLY: getStripePriceId(
     "STRIPE_PRICE_WHISPR_PLUS_MONTHLY",
-    "PRICE_ID_WHISPR_PLUS",
-    "PRICE_ID_PLUS",
     "STRIPE_PRICE_ID_WHISPR_PLUS"
   ),
 }

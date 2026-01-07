@@ -64,9 +64,21 @@ export async function POST(request: NextRequest) {
 
     // NEW: Direct priceId support (preferred)
     if (priceId) {
-      if (!priceId || typeof priceId !== "string") {
+      if (!priceId || typeof priceId !== "string" || priceId.trim().length === 0) {
         console.error("[STRIPE CHECKOUT] Invalid priceId", { requestId, priceId })
-        return NextResponse.json({ error: "Invalid priceId" }, { status: 400 })
+        return NextResponse.json(
+          { error: "Invalid price ID. Price ID is required and must be a non-empty string." },
+          { status: 400 }
+        )
+      }
+
+      // Validate Stripe price ID format
+      if (!/^price_[a-zA-Z0-9]+$/.test(priceId.trim())) {
+        console.error("[STRIPE CHECKOUT] Invalid price ID format", { requestId, priceId })
+        return NextResponse.json(
+          { error: `Invalid price ID format: "${priceId}". Expected format: price_xxxxx. Please use a valid Stripe price ID from your environment variables.` },
+          { status: 400 }
+        )
       }
 
       // Determine mode by checking if priceId starts with subscription indicators
@@ -74,8 +86,8 @@ export async function POST(request: NextRequest) {
       // or we can check the price object, but that requires an API call
       mode = clientMetadata?.mode === "subscription" ? "subscription" : "payment"
 
-      lineItems = [{ price: priceId, quantity: 1 }]
-      console.log("[STRIPE CHECKOUT] Using direct priceId:", { requestId, priceId, mode })
+      lineItems = [{ price: priceId.trim(), quantity: 1 }]
+      console.log("[STRIPE CHECKOUT] Using direct priceId:", { requestId, priceId: priceId.trim(), mode })
     }
     // LEGACY: Support old purchaseType format for backward compatibility
     else if (purchaseType) {
@@ -90,14 +102,31 @@ export async function POST(request: NextRequest) {
         const product = getMomentProduct(momentLevel as MomentLevel)
         console.log("[STRIPE CHECKOUT] Moment product:", { requestId, product })
 
-        if (!product.priceId) {
-          console.error("[STRIPE CHECKOUT] No priceId configured for moment level:", {
+        // Validate price ID before creating checkout session
+        if (!product.priceId || typeof product.priceId !== "string" || product.priceId.trim().length === 0) {
+          console.error("[STRIPE CHECKOUT] Missing or invalid priceId for moment level:", {
             requestId,
             momentLevel,
+            priceId: product.priceId,
           })
           return NextResponse.json(
             {
-              error: `Price not configured for ${momentLevel}. Check STRIPE_PRICE_${momentLevel.toUpperCase()}_MOMENT env var.`,
+              error: `Price ID not configured for ${momentLevel} moment. Please check STRIPE_PRICE_${momentLevel.toUpperCase()}_MOMENT in Vercel environment variables.`,
+            },
+            { status: 500 },
+          )
+        }
+
+        // Validate Stripe price ID format
+        if (!/^price_[a-zA-Z0-9]+$/.test(product.priceId.trim())) {
+          console.error("[STRIPE CHECKOUT] Invalid price ID format for moment level:", {
+            requestId,
+            momentLevel,
+            priceId: product.priceId,
+          })
+          return NextResponse.json(
+            {
+              error: `Invalid price ID format for ${momentLevel} moment: "${product.priceId}". Expected format: price_xxxxx. Please check your Vercel environment variables.`,
             },
             { status: 500 },
           )
@@ -109,10 +138,26 @@ export async function POST(request: NextRequest) {
         const product = getMediaProduct()
         console.log("[STRIPE CHECKOUT] Media product:", { requestId, product })
 
-        if (!product.priceId) {
-          console.error("[STRIPE CHECKOUT] No priceId configured for media", { requestId })
+        // Validate price ID before creating checkout session
+        if (!product.priceId || typeof product.priceId !== "string" || product.priceId.trim().length === 0) {
+          console.error("[STRIPE CHECKOUT] Missing or invalid priceId for media", {
+            requestId,
+            priceId: product.priceId,
+          })
           return NextResponse.json(
-            { error: "Media price not configured. Check STRIPE_PRICE_PRIVATE_PHOTO env var." },
+            { error: "Media price ID not configured. Please check STRIPE_PRICE_PRIVATE_PHOTO in Vercel environment variables." },
+            { status: 500 },
+          )
+        }
+
+        // Validate Stripe price ID format
+        if (!/^price_[a-zA-Z0-9]+$/.test(product.priceId.trim())) {
+          console.error("[STRIPE CHECKOUT] Invalid price ID format for media:", {
+            requestId,
+            priceId: product.priceId,
+          })
+          return NextResponse.json(
+            { error: `Invalid price ID format for media: "${product.priceId}". Expected format: price_xxxxx. Please check your Vercel environment variables.` },
             { status: 500 },
           )
         }
@@ -123,10 +168,26 @@ export async function POST(request: NextRequest) {
         const product = getPlusProduct()
         console.log("[STRIPE CHECKOUT] Plus product:", { requestId, product })
 
-        if (!product.priceId) {
-          console.error("[STRIPE CHECKOUT] No priceId configured for Plus subscription", { requestId })
+        // Validate price ID before creating checkout session
+        if (!product.priceId || typeof product.priceId !== "string" || product.priceId.trim().length === 0) {
+          console.error("[STRIPE CHECKOUT] Missing or invalid priceId for Plus subscription", {
+            requestId,
+            priceId: product.priceId,
+          })
           return NextResponse.json(
-            { error: "Subscription price not configured. Check STRIPE_PRICE_WHISPR_PLUS_MONTHLY env var." },
+            { error: "Subscription price ID not configured. Please check STRIPE_PRICE_WHISPR_PLUS_MONTHLY in Vercel environment variables." },
+            { status: 500 },
+          )
+        }
+
+        // Validate Stripe price ID format
+        if (!/^price_[a-zA-Z0-9]+$/.test(product.priceId.trim())) {
+          console.error("[STRIPE CHECKOUT] Invalid price ID format for Plus subscription:", {
+            requestId,
+            priceId: product.priceId,
+          })
+          return NextResponse.json(
+            { error: `Invalid price ID format for Plus subscription: "${product.priceId}". Expected format: price_xxxxx. Please check your Vercel environment variables.` },
             { status: 500 },
           )
         }

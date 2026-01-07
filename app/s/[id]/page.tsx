@@ -51,11 +51,17 @@ interface SafeCharacter {
   situations: Situation[]
 }
 
-const MOMENT_PRICES: Record<MomentLevel, string> = {
-  free: "Free",
-  private: "$3.99",
-  intimate: "$4.99",
-  exclusive: "$6.99",
+const MOMENT_PRICES: Record<MomentLevel, number> = {
+  free: 0,
+  private: 399,
+  intimate: 499,
+  exclusive: 699,
+}
+
+// Format price consistently as EUR
+function formatPrice(cents: number): string {
+  if (cents === 0) return "Free"
+  return `€${(cents / 100).toFixed(2)}`
 }
 
 // ============================================================================
@@ -235,9 +241,9 @@ function HeroSection({ character }: { character: SafeCharacter }) {
   const gradient = getCharacterGradient(character.name)
 
   return (
-    <section className="mb-12">
+    <section className="mb-8">
       {/* Mobile image */}
-      <div className="lg:hidden relative w-full aspect-[3/4] max-w-xs mx-auto mb-8 rounded-2xl overflow-hidden shadow-2xl">
+      <div className="lg:hidden relative w-full aspect-[3/4] max-w-xs mx-auto mb-6 rounded-2xl overflow-hidden shadow-2xl">
         {!imageError && character.image ? (
           <Image
             src={character.image}
@@ -277,16 +283,16 @@ function HeroSection({ character }: { character: SafeCharacter }) {
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
       </div>
 
-      {/* Character info */}
-      <div className="lg:absolute lg:bottom-12 lg:left-12 lg:right-12 z-20">
-        <h1 className="text-4xl lg:text-5xl xl:text-6xl font-bold text-white mb-3 tracking-tight">
+      {/* Character info - reduced prominence */}
+      <div className="lg:absolute lg:bottom-8 lg:left-8 lg:right-8 z-20">
+        <h1 className="text-3xl lg:text-4xl xl:text-5xl font-bold text-white mb-2 tracking-tight line-clamp-2">
           {character.name}
         </h1>
-        <p className="text-lg lg:text-xl text-gray-300 mb-4 max-w-2xl leading-relaxed">
+        <p className="text-base lg:text-lg text-gray-300 mb-3 max-w-xl leading-relaxed line-clamp-2">
           {character.description}
         </p>
         {character.tags.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-6">
+          <div className="flex flex-wrap gap-2">
             {character.tags.slice(0, 5).map((tag, idx) => (
               <span key={idx} className="text-xs text-gray-400 lowercase tracking-wide">
                 {tag} ·
@@ -315,69 +321,69 @@ function TonightsPath({
       <div
         className={cn(
           "flex items-center gap-2 transition-all duration-300 cursor-pointer",
-          activeTier === "warm-up" && "scale-110",
+          activeTier === "warm-up" ? "scale-110" : "opacity-40",
         )}
         onMouseEnter={() => onTierHover("warm-up")}
         onMouseLeave={() => onTierHover(null)}
       >
         <div
           className={cn(
-            "w-2 h-2 rounded-full bg-violet-400 transition-all duration-300",
-            activeTier === "warm-up" && "scale-125 bg-violet-500",
+            "w-2 h-2 rounded-full transition-all duration-300",
+            activeTier === "warm-up" ? "scale-125 bg-violet-500" : "bg-violet-400",
           )}
         />
         <span
           className={cn(
-            "text-gray-400 transition-colors",
-            activeTier === "warm-up" && "text-violet-400 font-medium",
+            "transition-colors",
+            activeTier === "warm-up" ? "text-violet-400 font-medium" : "text-gray-500",
           )}
         >
           Start gentle
         </span>
       </div>
-      <div className="w-8 h-px bg-gray-700" />
+      <div className={cn("w-8 h-px transition-opacity", activeTier === "warm-up" || activeTier === "closer" ? "bg-gray-600" : "bg-gray-800 opacity-40")} />
       <div
         className={cn(
           "flex items-center gap-2 transition-all duration-300 cursor-pointer",
-          activeTier === "closer" && "scale-110",
+          activeTier === "closer" ? "scale-110" : "opacity-40",
         )}
         onMouseEnter={() => onTierHover("closer")}
         onMouseLeave={() => onTierHover(null)}
       >
         <div
           className={cn(
-            "w-2 h-2 rounded-full bg-violet-500 transition-all duration-300",
-            activeTier === "closer" && "scale-125 bg-violet-600",
+            "w-2 h-2 rounded-full transition-all duration-300",
+            activeTier === "closer" ? "scale-125 bg-violet-600" : "bg-violet-500",
           )}
         />
         <span
           className={cn(
-            "text-gray-400 transition-colors",
-            activeTier === "closer" && "text-violet-400 font-medium",
+            "transition-colors",
+            activeTier === "closer" ? "text-violet-400 font-medium" : "text-gray-500",
           )}
         >
           Gets closer
         </span>
       </div>
-      <div className="w-8 h-px bg-gray-700" />
+      <div className={cn("w-8 h-px transition-opacity", activeTier === "closer" || activeTier === "dark-side" ? "bg-gray-600" : "bg-gray-800 opacity-40")} />
       <div
         className={cn(
           "flex items-center gap-2 transition-all duration-300 cursor-pointer",
-          activeTier === "dark-side" && "scale-110",
+          activeTier === "dark-side" ? "scale-110" : "opacity-40",
         )}
         onMouseEnter={() => onTierHover("dark-side")}
         onMouseLeave={() => onTierHover(null)}
       >
         <div
           className={cn(
-            "w-2 h-2 rounded-full bg-amber-500 transition-all duration-300",
-            activeTier === "dark-side" && "scale-125 bg-amber-600",
+            "w-2 h-2 rounded-full transition-all duration-300",
+            activeTier === "dark-side" ? "scale-125 bg-amber-600" : "bg-amber-500",
           )}
         />
         <span
           className={cn(
-            "text-gray-400 transition-colors",
-            activeTier === "dark-side" && "text-amber-400 font-medium",
+            "transition-colors",
+            activeTier === "dark-side" ? "text-amber-400 font-medium" : "text-gray-500",
           )}
         >
           No turning back
@@ -423,7 +429,7 @@ function MomentsGallery({
 
   return (
     <section className="mb-16">
-      <div className="mb-8">
+      <div className="mb-6">
         <h2 className="text-3xl font-bold text-white mb-2">Moments</h2>
         <p className="text-sm text-gray-400">Choose how you want to meet {getFirstName(character.name)}</p>
       </div>
@@ -468,8 +474,8 @@ function MomentsGallery({
           />
         ))}
 
-        {/* Tier B: Closer (Premium) */}
-        {[...privateMoments, ...intimateMoments].map((situation) => {
+        {/* Tier B: Closer (Premium) - Private */}
+        {privateMoments.map((situation) => {
           const isUnlocked = isMomentUnlocked(situation, character.id, entitlements)
           return (
             <MomentCardTierB
@@ -482,7 +488,33 @@ function MomentsGallery({
               onHover={() => onMomentHover(situation)}
               onHoverEnd={() => onMomentHover(null)}
               onPlusClick={() => {
-                // Handle WHISPR+ click
+                onMomentClick({
+                  id: "plus",
+                  title: "WHISPR Plus",
+                  description: "",
+                  tags: [],
+                  isPaid: true,
+                  momentLevel: "private",
+                })
+              }}
+            />
+          )
+        })}
+
+        {/* Tier B: Closer (Premium) - Intimate */}
+        {intimateMoments.map((situation) => {
+          const isUnlocked = isMomentUnlocked(situation, character.id, entitlements)
+          return (
+            <MomentCardTierBIntimate
+              key={situation.id}
+              situation={situation}
+              character={character}
+              isUnlocked={isUnlocked}
+              isActive={activeMoment?.id === situation.id}
+              onClick={() => onMomentClick(situation)}
+              onHover={() => onMomentHover(situation)}
+              onHoverEnd={() => onMomentHover(null)}
+              onPlusClick={() => {
                 onMomentClick({
                   id: "plus",
                   title: "WHISPR Plus",
@@ -560,7 +592,7 @@ function MomentCardTierA({
         {!imageError ? (
           <Image
             src={imageSrc}
-            alt={situation.title}
+            alt={situation.title || "Moment"}
             fill
             className="object-cover transition-transform duration-700 group-hover:scale-110"
             sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
@@ -573,17 +605,17 @@ function MomentCardTierA({
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
       </div>
 
-      <div className="absolute top-4 left-4 z-10">
+      <div className="absolute top-3 left-3 z-20">
         <span className="px-3 py-1 rounded-full bg-violet-500/20 backdrop-blur-sm border border-violet-500/30 text-xs font-medium text-violet-300">
           Start gentle
         </span>
       </div>
 
       <div className="absolute inset-0 flex flex-col justify-end p-6 z-10">
-        <h3 className="text-xl font-semibold text-white mb-2 group-hover:text-violet-300 transition-colors">
-          {situation.title}
+        <h3 className="text-xl font-semibold text-white mb-2 group-hover:text-violet-300 transition-colors line-clamp-2">
+          {situation.title || "Untitled"}
         </h3>
-        <p className="text-sm text-gray-300 mb-4 leading-relaxed line-clamp-2">{situation.description}</p>
+        <p className="text-sm text-gray-300 mb-4 leading-relaxed line-clamp-2">{situation.description || ""}</p>
         <button
           onClick={(e) => {
             e.stopPropagation()
@@ -599,7 +631,7 @@ function MomentCardTierA({
   )
 }
 
-// Tier B: Closer (Premium)
+// Tier B: Closer (Premium) - Private
 function MomentCardTierB({
   situation,
   character,
@@ -621,7 +653,7 @@ function MomentCardTierB({
 }) {
   const [imageError, setImageError] = useState(false)
   const imageSrc = situation.image || character.image || "/placeholder.svg"
-  const price = MOMENT_PRICES[situation.momentLevel]
+  const price = formatPrice(MOMENT_PRICES[situation.momentLevel])
 
   return (
     <div
@@ -640,7 +672,7 @@ function MomentCardTierB({
         {!imageError ? (
           <Image
             src={imageSrc}
-            alt={situation.title}
+            alt={situation.title || "Moment"}
             fill
             className="object-cover transition-transform duration-700 group-hover:scale-110"
             sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
@@ -651,34 +683,34 @@ function MomentCardTierB({
           <div className="absolute inset-0 bg-gradient-to-br from-violet-600/80 to-purple-900/80" />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-black/20" />
-        {!isUnlocked && <div className="absolute inset-0 bg-gradient-to-br from-violet-900/30 via-pink-900/20 to-transparent" />}
+        {!isUnlocked && <div className="absolute inset-0 bg-gradient-to-br from-violet-900/40 via-purple-900/30 to-transparent" />}
       </div>
 
-      <div className="absolute top-4 left-4 z-10">
+      <div className="absolute top-3 left-3 z-20">
         <span className="px-3 py-1 rounded-full bg-violet-500/20 backdrop-blur-sm border border-violet-500/30 text-xs font-medium text-violet-300">
           Gets closer
         </span>
       </div>
 
       {!isUnlocked && (
-        <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
-          <span className="px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-sm border border-white/20 text-[10px] font-medium text-violet-300/80">
+        <div className="absolute top-3 right-3 z-20 flex items-center gap-2">
+          <span className="px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-sm border border-white/20 text-[10px] font-medium text-violet-300/90 whitespace-nowrap">
             Locked
           </span>
-          <div className="w-6 h-6 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center border border-white/20">
+          <div className="w-6 h-6 rounded-full bg-black/70 backdrop-blur-sm flex items-center justify-center border border-white/20 shrink-0">
             <Lock className="h-3 w-3 text-violet-400" />
           </div>
         </div>
       )}
 
       <div className="absolute inset-0 flex flex-col justify-end p-6 z-10">
-        <h3 className="text-xl font-semibold text-white mb-2 group-hover:text-violet-300 transition-colors">
-          {situation.title}
+        <h3 className="text-xl font-semibold text-white mb-2 group-hover:text-violet-300 transition-colors line-clamp-2">
+          {situation.title || "Untitled"}
         </h3>
         {!isUnlocked && (
           <p className="text-sm text-violet-300/80 mb-2 italic leading-relaxed">He gets closer than usual…</p>
         )}
-        <p className="text-sm text-gray-300 mb-4 leading-relaxed line-clamp-2">{situation.description}</p>
+        <p className="text-sm text-gray-300 mb-4 leading-relaxed line-clamp-2">{situation.description || ""}</p>
         {isUnlocked ? (
           <button
             onClick={(e) => {
@@ -698,7 +730,7 @@ function MomentCardTierB({
               }}
               className="w-full py-2.5 px-4 rounded-lg bg-violet-600 hover:bg-violet-700 text-white font-medium text-sm transition-colors mb-2"
             >
-              Unlock – {price.replace("$", "€")}
+              Unlock now — {price}
             </button>
             <button
               onClick={(e) => {
@@ -710,6 +742,124 @@ function MomentCardTierB({
               Get WHISPR+ — unlock all moments tonight
             </button>
             <p className="text-[10px] text-violet-400/60 text-center">(Best value) from €12.99/mo</p>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// Tier B: Closer (Premium) - Intimate (distinct visual treatment)
+function MomentCardTierBIntimate({
+  situation,
+  character,
+  isUnlocked,
+  isActive,
+  onClick,
+  onHover,
+  onHoverEnd,
+  onPlusClick,
+}: {
+  situation: Situation
+  character: SafeCharacter
+  isUnlocked: boolean
+  isActive: boolean
+  onClick: () => void
+  onHover: () => void
+  onHoverEnd: () => void
+  onPlusClick: () => void
+}) {
+  const [imageError, setImageError] = useState(false)
+  const imageSrc = situation.image || character.image || "/placeholder.svg"
+  const price = formatPrice(MOMENT_PRICES[situation.momentLevel])
+
+  return (
+    <div
+      className={cn(
+        "group relative aspect-[4/5] rounded-2xl overflow-hidden border transition-all duration-500 hover:scale-[1.02] cursor-pointer",
+        isUnlocked
+          ? "bg-green-500/5 border-green-500/30 hover:border-green-500/50"
+          : "bg-[#1a1a1a] border-pink-500/30 hover:border-pink-500/50",
+        isActive && "scale-[1.02]",
+      )}
+      onClick={onClick}
+      onMouseEnter={onHover}
+      onMouseLeave={onHoverEnd}
+    >
+      <div className="absolute inset-0">
+        {!imageError ? (
+          <Image
+            src={imageSrc}
+            alt={situation.title || "Moment"}
+            fill
+            className="object-cover transition-transform duration-700 group-hover:scale-110"
+            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            loading="lazy"
+            onError={() => setImageError(true)}
+          />
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-pink-600/80 to-rose-900/80" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/60 to-black/30" />
+        {!isUnlocked && <div className="absolute inset-0 bg-gradient-to-br from-pink-900/40 via-rose-900/30 to-transparent" />}
+      </div>
+
+      <div className="absolute top-3 left-3 z-20">
+        <span className="px-3 py-1 rounded-full bg-pink-500/20 backdrop-blur-sm border border-pink-500/30 text-xs font-medium text-pink-300">
+          Gets closer
+        </span>
+      </div>
+
+      {!isUnlocked && (
+        <div className="absolute top-3 right-3 z-20 flex items-center gap-2">
+          <span className="px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-sm border border-white/20 text-[10px] font-medium text-pink-300/90 whitespace-nowrap">
+            Locked
+          </span>
+          <div className="w-6 h-6 rounded-full bg-black/70 backdrop-blur-sm flex items-center justify-center border border-white/20 shrink-0">
+            <Lock className="h-3 w-3 text-pink-400" />
+          </div>
+        </div>
+      )}
+
+      <div className="absolute inset-0 flex flex-col justify-end p-6 z-10">
+        <h3 className="text-xl font-semibold text-white mb-2 group-hover:text-pink-300 transition-colors line-clamp-2">
+          {situation.title || "Untitled"}
+        </h3>
+        {!isUnlocked && (
+          <p className="text-sm text-pink-300/80 mb-2 italic leading-relaxed">His voice drops lower, more personal…</p>
+        )}
+        <p className="text-sm text-gray-300 mb-4 leading-relaxed line-clamp-2">{situation.description || ""}</p>
+        {isUnlocked ? (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onClick()
+            }}
+            className="w-full py-2.5 px-4 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium text-sm transition-colors"
+          >
+            Start
+          </button>
+        ) : (
+          <>
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onClick()
+              }}
+              className="w-full py-2.5 px-4 rounded-lg bg-pink-600 hover:bg-pink-700 text-white font-medium text-sm transition-colors mb-2"
+            >
+              Unlock now — {price}
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onPlusClick()
+              }}
+              className="text-xs text-pink-400/80 hover:text-pink-400 text-center transition-colors mb-1"
+            >
+              Get WHISPR+ — unlock all moments tonight
+            </button>
+            <p className="text-[10px] text-pink-400/60 text-center">(Best value) from €12.99/mo</p>
           </>
         )}
       </div>
@@ -739,7 +889,7 @@ function MomentCardTierC({
 }) {
   const [imageError, setImageError] = useState(false)
   const imageSrc = situation.image || character.image || "/placeholder.svg"
-  const price = MOMENT_PRICES[situation.momentLevel]
+  const price = formatPrice(MOMENT_PRICES[situation.momentLevel])
 
   return (
     <div
@@ -762,13 +912,13 @@ function MomentCardTierC({
         {!imageError ? (
           <Image
             src={imageSrc}
-            alt={situation.title}
+            alt={situation.title || "Moment"}
             fill
             className={cn(
               "object-cover transition-all duration-700",
               isUnlocked
                 ? "group-hover:scale-110"
-                : "scale-110 blur-[20px] group-hover:blur-[14px]",
+                : "scale-110 blur-[24px] group-hover:blur-[16px]",
             )}
             sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
             loading="lazy"
@@ -777,12 +927,20 @@ function MomentCardTierC({
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-amber-600/80 to-orange-900/80" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-black/60" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/90 to-black/70" />
         {!isUnlocked && (
           <>
-            <div className="absolute inset-0 bg-gradient-to-br from-amber-900/40 via-red-900/30 to-black/80" />
+            <div className="absolute inset-0 bg-gradient-to-br from-amber-900/50 via-red-900/40 to-black/90" />
+            {/* Vignette effect */}
+            <div 
+              className="absolute inset-0"
+              style={{
+                background: "radial-gradient(circle at center, transparent 0%, transparent 40%, rgba(0,0,0,0.6) 100%)"
+              }}
+            />
+            {/* Grain texture */}
             <div
-              className="absolute inset-0 opacity-30"
+              className="absolute inset-0 opacity-40"
               style={{
                 backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
                 mixBlendMode: "overlay",
@@ -792,36 +950,42 @@ function MomentCardTierC({
         )}
       </div>
 
-      <div className="absolute top-4 left-4 z-30">
+      <div className="absolute top-3 left-3 z-30">
         <span className="px-3 py-1 rounded-full bg-amber-500/20 backdrop-blur-sm border border-amber-500/40 text-xs font-bold text-amber-300">
           No turning back
         </span>
       </div>
 
       {!isUnlocked && (
-        <div className="absolute top-4 right-4 z-30">
-          <div className="w-6 h-6 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center border border-white/20">
+        <div className="absolute top-3 right-3 z-30 flex items-center gap-2">
+          <span className="px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-sm border border-white/20 text-[10px] font-medium text-amber-300/90 whitespace-nowrap">
+            Locked
+          </span>
+          <div className="w-6 h-6 rounded-full bg-black/70 backdrop-blur-sm flex items-center justify-center border border-white/20 shrink-0">
             <Lock className="h-3 w-3 text-amber-400" />
           </div>
         </div>
       )}
 
       <div className="absolute inset-0 flex flex-col justify-end p-6 z-10">
-        <h3 className="text-xl font-semibold text-white mb-2 group-hover:text-amber-300 transition-colors">
-          {situation.title}
+        {!isUnlocked && (
+          <p className="text-xs text-amber-400/60 mb-2 font-medium uppercase tracking-wider">Not for everyone</p>
+        )}
+        <h3 className="text-xl font-semibold text-white mb-2 group-hover:text-amber-300 transition-colors line-clamp-2">
+          {situation.title || "Untitled"}
         </h3>
         {!isUnlocked && (
           <>
             <p className="text-sm text-amber-300/80 mb-2 italic leading-relaxed">
               This moment goes further. The intensity builds, and boundaries blur…
             </p>
-            <p className="text-xs text-amber-400/60 mb-2 font-mono tracking-wider">
+            <p className="text-xs text-amber-400/70 mb-2 font-mono tracking-wider">
               He whispers: "•••• •••• •••"
             </p>
           </>
         )}
         <p className={cn("text-sm mb-4 leading-relaxed line-clamp-2", isUnlocked ? "text-gray-300" : "text-gray-400")}>
-          {situation.description}
+          {situation.description || ""}
         </p>
         {isUnlocked ? (
           <button
@@ -842,7 +1006,7 @@ function MomentCardTierC({
               }}
               className="w-full py-2.5 px-4 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-medium text-sm transition-colors mb-2"
             >
-              Unlock Dark Side – {price.replace("$", "€")}
+              Unlock now — {price}
             </button>
             <button
               onClick={(e) => {
@@ -882,17 +1046,17 @@ function StickyCTABar({
 }) {
   if (!activeMoment) return null
 
-  const price = MOMENT_PRICES[activeMoment.momentLevel]
+  const price = formatPrice(MOMENT_PRICES[activeMoment.momentLevel])
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 border-t backdrop-blur-md transition-colors border-violet-500/30 bg-[#0a0a0a]/95">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
           <div className="flex-1 min-w-0">
-            <span className="text-sm sm:text-base font-semibold text-white">
+            <span className="text-sm sm:text-base font-semibold text-white line-clamp-1">
               {isUnlocked
-                ? `Start ${activeMoment.title}`
-                : `Unlock ${activeMoment.title} — ${price.replace("$", "€")}`}
+                ? `Start ${activeMoment.title || "moment"}`
+                : `Unlock ${activeMoment.title || "moment"} — ${price}`}
             </span>
             <p className="text-[10px] sm:text-xs text-gray-400 mt-1">Unlock in seconds • Instant access</p>
           </div>

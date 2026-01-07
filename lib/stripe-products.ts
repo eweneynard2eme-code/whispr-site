@@ -1,5 +1,5 @@
 import "server-only"
-import { ENV_STRIPE_PRICES } from "@/lib/env"
+import { ENV_STRIPE_PRICES, validateStripePriceId } from "@/lib/env"
 
 export type MomentLevel = "private" | "intimate" | "exclusive"
 
@@ -11,7 +11,20 @@ export interface StripeProduct {
   mode: "payment" | "subscription"
 }
 
-// Product catalog - prices from env vars with fallback support
+/**
+ * Gets a validated price ID for a product
+ * Throws a clear error if missing or invalid
+ */
+function getValidatedPriceId(
+  value: string,
+  productName: string,
+  ...envVarNames: string[]
+): string {
+  return validateStripePriceId(value, ...envVarNames)
+}
+
+// Product catalog - SINGLE SOURCE OF TRUTH for Stripe prices
+// All price IDs come from ENV_STRIPE_PRICES (which validates on load)
 export const STRIPE_PRODUCTS = {
   // One-time moment purchases
   moment: {
@@ -64,15 +77,44 @@ export const STRIPE_PRODUCTS = {
 } as const
 
 export function getMomentProduct(level: MomentLevel): StripeProduct {
-  return STRIPE_PRODUCTS.moment[level]
+  const product = STRIPE_PRODUCTS.moment[level]
+  // Validate price ID at runtime (when actually used)
+  const envVarNames = level === "private"
+    ? ["STRIPE_PRICE_PRIVATE_MOMENT", "STRIPE_PRICE_ID_PRIVATE_MOMENT"]
+    : level === "intimate"
+    ? ["STRIPE_PRICE_INTIMATE_MOMENT", "STRIPE_PRICE_ID_INTIMATE_MOMENT"]
+    : ["STRIPE_PRICE_EXCLUSIVE_MOMENT", "STRIPE_PRICE_ID_EXCLUSIVE_MOMENT"]
+  
+  return {
+    ...product,
+    priceId: getValidatedPriceId(product.priceId, `Moment (${level})`, ...envVarNames),
+  }
 }
 
 export function getMediaProduct(): StripeProduct {
-  return STRIPE_PRODUCTS.media
+  const product = STRIPE_PRODUCTS.media
+  return {
+    ...product,
+    priceId: getValidatedPriceId(
+      product.priceId,
+      "Private Photo",
+      "STRIPE_PRICE_PRIVATE_PHOTO",
+      "STRIPE_PRICE_ID_PRIVATE_PHOTO"
+    ),
+  }
 }
 
 export function getPlusProduct() {
-  return STRIPE_PRODUCTS.plus
+  const product = STRIPE_PRODUCTS.plus
+  return {
+    ...product,
+    priceId: getValidatedPriceId(
+      product.priceId,
+      "WHISPR Plus",
+      "STRIPE_PRICE_WHISPR_PLUS_MONTHLY",
+      "STRIPE_PRICE_ID_WHISPR_PLUS"
+    ),
+  }
 }
 
 // Price display helpers
