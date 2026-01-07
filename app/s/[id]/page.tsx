@@ -119,12 +119,12 @@ function buildSafeSituations(character: Character): Situation[] {
     })
   }
 
-  // Default situations with exact copy + emojis
+  // Default situations with exact copy
   return [
     {
       id: "free1",
       title: "Late night talk",
-      description: "Calm, quiet conversation",
+      description: "Calm, quiet conversation.",
       tags: ["calm", "quiet"],
       isPaid: false,
       momentLevel: "free",
@@ -133,7 +133,7 @@ function buildSafeSituations(character: Character): Situation[] {
     {
       id: "private1",
       title: "Private moment",
-      description: "Something more intimate",
+      description: "Just you two. A little closer.",
       tags: ["private", "personal"],
       isPaid: true,
       momentLevel: "private",
@@ -142,7 +142,7 @@ function buildSafeSituations(character: Character): Situation[] {
     {
       id: "intimate1",
       title: "Intimate moment",
-      description: "His voice gets low",
+      description: "Just you two. A little closer.",
       tags: ["intimate", "closer"],
       isPaid: true,
       momentLevel: "intimate",
@@ -151,7 +151,7 @@ function buildSafeSituations(character: Character): Situation[] {
     {
       id: "exclusive1",
       title: "Dark side",
-      description: "This goes further. Once you open it… you can't unsee it.",
+      description: "This goes further. You've been warned.",
       tags: ["exclusive", "rare"],
       isPaid: true,
       momentLevel: "exclusive",
@@ -294,9 +294,10 @@ function MomentsGallery({
 
   return (
     <section className="mb-16">
-      {/* First row: Free + Private/Intimate (side by side) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8 mb-8">
-        {/* Tier A: Warm-up (Free) */}
+      {/* Mobile: Vertical stack (Free → Private/Intimate → Dark Side) */}
+      {/* Desktop: 2 cards side-by-side, Dark Side centered below */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 lg:gap-8 mb-6 md:mb-8">
+        {/* Tier A: Free */}
         {freeMoments.map((situation) => (
           <MomentCardFree
             key={situation.id}
@@ -309,7 +310,7 @@ function MomentsGallery({
           />
         ))}
 
-        {/* Tier B: Private or Intimate (whichever exists first) */}
+        {/* Tier B: Private or Intimate */}
         {[...privateMoments, ...intimateMoments].slice(0, 1).map((situation) => {
           const isUnlocked = isMomentUnlocked(situation, character.id, entitlements)
           return (
@@ -338,10 +339,10 @@ function MomentsGallery({
         })}
       </div>
 
-      {/* Second row: Dark side (centered, larger) */}
+      {/* Dark Side: Always visible, centered on desktop, in stack on mobile */}
       {exclusiveMoments.length > 0 && (
         <div className="flex justify-center">
-          <div className="w-full max-w-4xl">
+          <div className="w-full md:max-w-4xl">
             {exclusiveMoments.map((situation) => {
               const isUnlocked = isMomentUnlocked(situation, character.id, entitlements)
               return (
@@ -374,7 +375,7 @@ function MomentsGallery({
   )
 }
 
-// Free moment card
+// Free moment card (always clear, bright, safe)
 function MomentCardFree({
   situation,
   character,
@@ -392,6 +393,7 @@ function MomentCardFree({
 }) {
   const [imageError, setImageError] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+  const [isSelected, setIsSelected] = useState(false)
   const imageSrc = situation.image || character.image || "/placeholder.svg"
 
   useEffect(() => {
@@ -401,8 +403,20 @@ function MomentCardFree({
   const handleCardClick = (e: React.MouseEvent) => {
     if (isMobile) {
       e.preventDefault()
-      onHover()
+      if (!isSelected) {
+        setIsSelected(true)
+        onHover()
+      }
     } else {
+      onClick()
+    }
+  }
+
+  const handleCTAClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (isMobile && isSelected) {
+      onClick()
+    } else if (!isMobile) {
       onClick()
     }
   }
@@ -410,10 +424,10 @@ function MomentCardFree({
   return (
     <div
       className={cn(
-        "group relative h-[520px] lg:h-[580px] rounded-3xl overflow-hidden transition-all duration-500 cursor-pointer",
-        isActive
-          ? "scale-[1.03] shadow-2xl shadow-violet-500/30 z-10"
-          : "opacity-50 scale-[0.98] lg:blur-[2px] hover:opacity-80 hover:scale-[1.0] hover:blur-0",
+        "group relative h-[480px] md:h-[520px] lg:h-[580px] rounded-3xl overflow-hidden transition-all duration-500 cursor-pointer",
+        isActive || isSelected
+          ? "scale-[1.01] md:scale-[1.02] shadow-2xl shadow-violet-500/30 z-10 ring-2 ring-violet-500/50"
+          : "md:opacity-70 hover:opacity-100 hover:scale-[1.02]",
       )}
       onClick={handleCardClick}
       onMouseEnter={onHover}
@@ -425,7 +439,7 @@ function MomentCardFree({
             src={imageSrc}
             alt={situation.title || "Moment"}
             fill
-            className="object-cover transition-transform duration-700 group-hover:scale-110"
+            className="object-cover transition-transform duration-700 md:group-hover:scale-110"
             sizes="(max-width: 768px) 100vw, 50vw"
             loading="lazy"
             onError={() => setImageError(true)}
@@ -433,31 +447,29 @@ function MomentCardFree({
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-violet-600/80 to-purple-900/80" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/50 to-transparent" />
       </div>
 
-      <div className="absolute bottom-0 left-0 right-0 p-8 z-10 bg-gradient-to-t from-black/90 via-black/70 to-transparent">
-        <h3 className="text-2xl font-bold text-white mb-2 line-clamp-1">
+      <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8 z-10 bg-gradient-to-t from-black/75 via-black/65 to-transparent">
+        <h3 className="text-xl md:text-2xl font-bold text-white mb-1.5 md:mb-2 line-clamp-1">
           {situation.title || "Late night talk"} 🌙
         </h3>
-        <p className="text-base text-gray-200 mb-6 line-clamp-1">
-          {situation.description || "Calm, quiet conversation"}
+        <p className="text-sm md:text-base text-gray-200 mb-4 md:mb-6 line-clamp-1">
+          {situation.description || "Calm, quiet conversation."}
         </p>
         <button
-          onClick={(e) => {
-            e.stopPropagation()
-            onClick()
-          }}
-          className="w-full h-14 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold text-lg transition-colors shadow-xl shadow-violet-500/40"
+          onClick={handleCTAClick}
+          className="w-full h-12 md:h-14 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold text-base md:text-lg transition-colors shadow-xl shadow-violet-500/40"
         >
           Start
         </button>
+        <p className="text-[10px] md:text-xs text-violet-400/60 text-center mt-1.5">Instant access • Secure checkout</p>
       </div>
     </div>
   )
 }
 
-// Premium moment card (Private/Intimate)
+// Premium moment card (Private/Intimate - always clear, darker contrast)
 function MomentCardPremium({
   situation,
   character,
@@ -481,15 +493,15 @@ function MomentCardPremium({
 }) {
   const [imageError, setImageError] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+  const [isSelected, setIsSelected] = useState(false)
   const imageSrc = situation.image || character.image || "/placeholder.svg"
   const price = formatPrice(MOMENT_PRICES[situation.momentLevel])
   
   const isPrivate = tier === "private"
-  const emoji = isPrivate ? "😳" : "😳💗"
   const title = isPrivate ? "Private moment" : "Intimate moment"
   const description = isPrivate
-    ? "Something more intimate"
-    : "His voice gets low"
+    ? "Just you two. A little closer."
+    : "Just you two. A little closer."
 
   useEffect(() => {
     setIsMobile(window.innerWidth < 768)
@@ -498,28 +510,38 @@ function MomentCardPremium({
   const handleCardClick = (e: React.MouseEvent) => {
     if (isMobile) {
       e.preventDefault()
-      onHover()
+      if (!isSelected) {
+        setIsSelected(true)
+        onHover()
+      }
     } else {
       onClick()
     }
   }
 
-  const glowColor = isPrivate ? "violet" : "pink"
+  const handleCTAClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (isMobile && isSelected) {
+      onClick()
+    } else if (!isMobile) {
+      onClick()
+    }
+  }
 
   return (
     <div
       className={cn(
-        "group relative h-[520px] lg:h-[580px] rounded-3xl overflow-hidden transition-all duration-500 cursor-pointer",
+        "group relative h-[480px] md:h-[520px] lg:h-[580px] rounded-3xl overflow-hidden transition-all duration-500 cursor-pointer",
         isUnlocked
           ? "bg-green-500/5"
           : isPrivate
             ? "bg-[#1a1a1a]"
             : "bg-[#1a1a1a]",
-        isActive
+        isActive || isSelected
           ? isPrivate
-            ? "scale-[1.03] shadow-2xl shadow-violet-500/40 z-10"
-            : "scale-[1.03] shadow-2xl shadow-pink-500/40 z-10"
-          : "opacity-50 scale-[0.98] lg:blur-[2px] hover:opacity-80 hover:scale-[1.0] hover:blur-0",
+            ? "scale-[1.01] md:scale-[1.02] shadow-2xl shadow-violet-500/40 z-10 ring-2 ring-violet-500/50"
+            : "scale-[1.01] md:scale-[1.02] shadow-2xl shadow-pink-500/40 z-10 ring-2 ring-pink-500/50"
+          : "md:opacity-70 hover:opacity-100 hover:scale-[1.02]",
       )}
       onClick={handleCardClick}
       onMouseEnter={onHover}
@@ -531,7 +553,7 @@ function MomentCardPremium({
             src={imageSrc}
             alt={title}
             fill
-            className="object-cover transition-transform duration-700 group-hover:scale-110"
+            className="object-cover transition-transform duration-700 md:group-hover:scale-110"
             sizes="(max-width: 768px) 100vw, 50vw"
             loading="lazy"
             onError={() => setImageError(true)}
@@ -539,12 +561,12 @@ function MomentCardPremium({
         ) : (
           <div className={cn("absolute inset-0 bg-gradient-to-br", isPrivate ? "from-violet-600/80 to-purple-900/80" : "from-pink-600/80 to-rose-900/80")} />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/60 to-black/30" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/60 to-black/40" />
         {!isUnlocked && (
           <div
             className={cn(
               "absolute inset-0 bg-gradient-to-br",
-              isPrivate ? "from-violet-900/50 via-purple-900/40 to-transparent" : "from-pink-900/50 via-rose-900/40 to-transparent",
+              isPrivate ? "from-violet-900/40 via-purple-900/30 to-transparent" : "from-pink-900/40 via-rose-900/30 to-transparent",
             )}
           />
         )}
@@ -552,40 +574,31 @@ function MomentCardPremium({
 
       {!isUnlocked && (
         <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
-          <span className="px-3 py-1 rounded-full bg-black/80 backdrop-blur-sm border border-white/20 text-xs font-medium text-white">
-            Locked
-          </span>
-          <div className="w-7 h-7 rounded-full bg-black/80 backdrop-blur-sm flex items-center justify-center border border-white/20 shrink-0">
+          <div className="w-7 h-7 rounded-full bg-black/70 backdrop-blur-sm flex items-center justify-center border border-white/20 shrink-0">
             <Lock className={cn("h-4 w-4", isPrivate ? "text-violet-400" : "text-pink-400")} />
           </div>
         </div>
       )}
 
-      <div className="absolute bottom-0 left-0 right-0 p-8 z-10 bg-gradient-to-t from-black/95 via-black/80 to-transparent">
-        <h3 className="text-2xl font-bold text-white mb-2 line-clamp-1">
-          {situation.title || title} {emoji}
+      <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8 z-10 bg-gradient-to-t from-black/75 via-black/65 to-transparent">
+        <h3 className="text-xl md:text-2xl font-bold text-white mb-1.5 md:mb-2 line-clamp-1">
+          {situation.title || title} 😳
         </h3>
-        <p className="text-base text-gray-200 mb-6 line-clamp-1">
-          {situation.description || description}
+        <p className="text-sm md:text-base text-gray-200 mb-4 md:mb-6 line-clamp-1">
+          {situation.description || "This goes further. You've been warned."}
         </p>
         {isUnlocked ? (
           <button
-            onClick={(e) => {
-              e.stopPropagation()
-              onClick()
-            }}
-            className="w-full h-14 rounded-xl bg-green-600 hover:bg-green-700 text-white font-bold text-lg transition-colors shadow-xl shadow-green-500/40"
+            onClick={handleCTAClick}
+            className="w-full h-12 md:h-14 rounded-xl bg-green-600 hover:bg-green-700 text-white font-bold text-base md:text-lg transition-colors shadow-xl shadow-green-500/40"
           >
             Start
           </button>
         ) : (
           <button
-            onClick={(e) => {
-              e.stopPropagation()
-              onClick()
-            }}
+            onClick={handleCTAClick}
             className={cn(
-              "w-full h-14 rounded-xl font-bold text-lg transition-colors shadow-xl",
+              "w-full h-12 md:h-14 rounded-xl font-bold text-base md:text-lg transition-colors shadow-xl",
               isPrivate
                 ? "bg-violet-600 hover:bg-violet-700 text-white shadow-violet-500/40"
                 : "bg-pink-600 hover:bg-pink-700 text-white shadow-pink-500/40",
@@ -594,12 +607,13 @@ function MomentCardPremium({
             Unlock now — {price}
           </button>
         )}
+        <p className="text-[10px] md:text-xs text-gray-400/80 text-center mt-1.5">Instant access • Secure checkout</p>
       </div>
     </div>
   )
 }
 
-// Dark side moment card (centered, larger)
+// Dark side moment card (ALWAYS blurred, forbidden, dangerous)
 function MomentCardDarkSide({
   situation,
   character,
@@ -621,6 +635,7 @@ function MomentCardDarkSide({
 }) {
   const [imageError, setImageError] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+  const [isSelected, setIsSelected] = useState(false)
   const imageSrc = situation.image || character.image || "/placeholder.svg"
   const price = formatPrice(MOMENT_PRICES[situation.momentLevel])
 
@@ -631,8 +646,20 @@ function MomentCardDarkSide({
   const handleCardClick = (e: React.MouseEvent) => {
     if (isMobile) {
       e.preventDefault()
-      onHover()
+      if (!isSelected) {
+        setIsSelected(true)
+        onHover()
+      }
     } else {
+      onClick()
+    }
+  }
+
+  const handleCTAClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (isMobile && isSelected) {
+      onClick()
+    } else if (!isMobile) {
       onClick()
     }
   }
@@ -640,20 +667,20 @@ function MomentCardDarkSide({
   return (
     <div
       className={cn(
-        "group relative h-[520px] lg:h-[580px] rounded-3xl overflow-hidden border-2 transition-all duration-500 cursor-pointer",
+        "group relative h-[480px] md:h-[520px] lg:h-[580px] rounded-3xl overflow-hidden border-2 transition-all duration-500 cursor-pointer",
         isUnlocked
           ? "bg-green-500/5 border-green-500/30"
           : "bg-[#0a0a0a] border-amber-500/40 animate-pulse-ring",
-        isActive
-          ? "scale-[1.03] border-amber-500/60 shadow-2xl shadow-amber-500/40 z-10"
-          : "opacity-50 scale-[0.98] lg:blur-[2px] hover:opacity-80 hover:scale-[1.0] hover:blur-0 hover:border-amber-500/60",
+        isActive || isSelected
+          ? "scale-[1.01] md:scale-[1.02] border-amber-500/60 shadow-2xl shadow-amber-500/40 z-10 ring-2 ring-amber-500/50"
+          : "md:opacity-70 hover:opacity-80 hover:scale-[1.02] hover:border-amber-500/60",
       )}
       onClick={handleCardClick}
       onMouseEnter={onHover}
       onMouseLeave={onHoverEnd}
     >
       {!isUnlocked && (
-        <div className="absolute inset-0 rounded-2xl bg-amber-500/10 animate-pulse opacity-50" />
+        <div className="absolute inset-0 rounded-3xl bg-amber-500/10 animate-pulse opacity-50" />
       )}
 
       <div className="absolute inset-0">
@@ -663,8 +690,9 @@ function MomentCardDarkSide({
             alt={situation.title || "Dark side"}
             fill
             className={cn(
-              "object-cover transition-all duration-700",
-              isUnlocked ? "group-hover:scale-110" : "scale-110 blur-[24px] group-hover:blur-[16px]",
+              "object-cover transition-transform duration-700",
+              // ALWAYS blurred, even when unlocked (forbidden aesthetic)
+              isUnlocked ? "blur-[18px] md:group-hover:scale-110" : "blur-[22px] md:group-hover:blur-[20px]",
             )}
             sizes="(max-width: 768px) 100vw, 100vw"
             loading="lazy"
@@ -677,12 +705,14 @@ function MomentCardDarkSide({
         {!isUnlocked && (
           <>
             <div className="absolute inset-0 bg-gradient-to-br from-amber-900/50 via-red-900/40 to-black/90" />
+            {/* Strong vignette */}
             <div
               className="absolute inset-0"
               style={{
-                background: "radial-gradient(circle at center, transparent 0%, transparent 40%, rgba(0,0,0,0.6) 100%)",
+                background: "radial-gradient(circle at center, transparent 0%, transparent 30%, rgba(0,0,0,0.7) 100%)",
               }}
             />
+            {/* Grain overlay */}
             <div
               className="absolute inset-0 opacity-40"
               style={{
@@ -690,58 +720,52 @@ function MomentCardDarkSide({
                 mixBlendMode: "overlay",
               }}
             />
-            {/* Inner glow effect */}
-            <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 via-amber-500/10 to-transparent" />
+            {/* Inner red/orange glow */}
+            <div className="absolute inset-0 bg-gradient-to-br from-red-500/15 via-amber-500/15 to-transparent" />
           </>
         )}
       </div>
 
       {!isUnlocked && (
         <div className="absolute top-4 right-4 z-30 flex items-center gap-2">
-          <span className="px-3 py-1 rounded-full bg-black/80 backdrop-blur-sm border border-white/20 text-xs font-medium text-white">
-            Locked
-          </span>
           <div className="w-7 h-7 rounded-full bg-black/80 backdrop-blur-sm flex items-center justify-center border border-white/20 shrink-0">
             <Lock className="h-4 w-4 text-amber-400" />
           </div>
         </div>
       )}
 
-      <div className="absolute bottom-0 left-0 right-0 p-8 z-10 bg-gradient-to-t from-black/95 via-black/80 to-transparent">
+      <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8 z-10 bg-gradient-to-t from-black/75 via-black/65 to-transparent">
         {!isUnlocked && (
-          <p className="text-xs text-red-400/90 mb-2 font-semibold">Not for everyone.</p>
+          <p className="text-xs md:text-sm text-red-400/90 mb-2 font-semibold">Not for everyone 🔥</p>
         )}
-        <h3 className="text-2xl font-bold text-white mb-2 line-clamp-1">
+        <h3 className="text-xl md:text-2xl font-bold text-white mb-1.5 md:mb-2 line-clamp-1">
           {situation.title || "Dark side"} 🔥🖤
         </h3>
         {!isUnlocked && (
-          <p className="text-sm text-amber-400/90 mb-3 font-mono tracking-widest">
+          <p className="text-xs md:text-sm text-amber-400/90 mb-2 md:mb-3 font-mono tracking-widest">
             He whispers: "•••• •••• •••"
           </p>
         )}
-        <p className="text-base text-gray-200 mb-6 line-clamp-1">
-          {situation.description || "This goes further. Once you open it… you can't unsee it."}
+        <p className="text-sm md:text-base text-gray-200 mb-4 md:mb-6 line-clamp-1">
+          {situation.description || "This goes further. You've been warned."}
         </p>
         {isUnlocked ? (
           <button
-            onClick={(e) => {
-              e.stopPropagation()
-              onClick()
-            }}
-            className="w-full h-14 rounded-xl bg-green-600 hover:bg-green-700 text-white font-bold text-lg transition-colors shadow-xl shadow-green-500/40"
+            onClick={handleCTAClick}
+            className="w-full h-12 md:h-14 rounded-xl bg-green-600 hover:bg-green-700 text-white font-bold text-base md:text-lg transition-colors shadow-xl shadow-green-500/40"
           >
             Start
           </button>
         ) : (
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              onClick()
-            }}
-            className="w-full h-14 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-lg transition-colors shadow-xl shadow-amber-500/40"
-          >
-            Unlock dark side — {price}
-          </button>
+          <>
+            <button
+              onClick={handleCTAClick}
+              className="w-full h-12 md:h-14 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-base md:text-lg transition-colors shadow-xl shadow-amber-500/40"
+            >
+              Enter the dark side — {price}
+            </button>
+            <p className="text-[10px] md:text-xs text-amber-400/70 text-center mt-1.5">Private • No refunds</p>
+          </>
         )}
       </div>
     </div>
@@ -771,18 +795,27 @@ function StickyCTABar({
 
   const price = formatPrice(MOMENT_PRICES[activeMoment.momentLevel])
   const isDarkSide = activeMoment.momentLevel === "exclusive"
+  
   const ctaText = isDarkSide && !isUnlocked
-    ? `Unlock dark side — ${price}`
+    ? `Enter the dark side — ${price}`
     : isUnlocked
       ? `Start ${activeMoment.title || "moment"}`
       : `Unlock ${activeMoment.title || "moment"} — ${price}`
 
+  const buttonText = isOpeningCheckout
+    ? "Opening..."
+    : isUnlocked
+      ? "Start"
+      : isDarkSide
+        ? "Enter"
+        : "Unlock now"
+
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 border-t backdrop-blur-md border-violet-500/30 bg-[#0a0a0a]/98">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <div className="flex items-center justify-between gap-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
+        <div className="flex items-center justify-between gap-3 sm:gap-4">
           <div className="flex-1 min-w-0">
-            <span className="text-base font-bold text-white line-clamp-1">
+            <span className="text-sm sm:text-base font-bold text-white line-clamp-1">
               {ctaText}
             </span>
           </div>
@@ -792,9 +825,9 @@ function StickyCTABar({
               onClick()
             }}
             disabled={isOpeningCheckout}
-            className="px-8 py-3 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold text-base transition-colors disabled:opacity-50 shadow-xl shadow-violet-500/40"
+            className="px-6 sm:px-8 py-2.5 sm:py-3 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold text-sm sm:text-base transition-colors disabled:opacity-50 shadow-xl shadow-violet-500/40"
           >
-            {isOpeningCheckout ? "Opening..." : isUnlocked ? "Start" : "Unlock now"}
+            {buttonText}
           </button>
         </div>
       </div>
