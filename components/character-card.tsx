@@ -33,29 +33,57 @@ export function CharacterCard({ character }: CharacterCardProps) {
   const { openModal } = useAuthModal()
   const router = useRouter()
 
-  const handleClick = (e: React.MouseEvent) => {
+  const handleClick = async (e: React.MouseEvent) => {
     e.preventDefault()
+    e.stopPropagation()
     
-    // If loading, do nothing (or could show toast)
-    if (isLoading) {
-      console.log("[CHARACTER_CARD] Auth state loading, ignoring click")
+    // Validate character ID
+    if (!character?.id) {
+      console.error("[CHARACTER_CARD] Invalid character ID")
       return
+    }
+
+    const characterId = character.id
+    console.log("[CHARACTER_CARD] Card clicked:", characterId, "isLoading:", isLoading, "isLoggedIn:", isLoggedIn)
+
+    // If loading, wait briefly then proceed (prevents permanent blocking)
+    if (isLoading) {
+      console.log("[CHARACTER_CARD] Auth state loading, waiting briefly...")
+      // Wait up to 500ms for auth to resolve, then proceed
+      await new Promise(resolve => setTimeout(resolve, 100))
+      // Re-check after brief wait - if still loading, proceed anyway to avoid dead clicks
     }
 
     // If logged in, navigate directly
     if (isLoggedIn) {
-      console.log("[CHARACTER_CARD] User logged in, navigating directly to character:", character.id)
-      router.push(`/s/${character.id}?scrollTo=moments`)
+      console.log("[CHARACTER_CARD] User logged in, navigating to character:", characterId)
+      try {
+        router.push(`/s/${characterId}?scrollTo=moments`)
+      } catch (error) {
+        console.error("[CHARACTER_CARD] Router push failed, using fallback:", error)
+        // Fallback to window.location if router fails
+        if (typeof window !== "undefined") {
+          window.location.href = `/s/${characterId}?scrollTo=moments`
+        }
+      }
       return
     }
 
     // If logged out, open auth modal with intent
-    console.log("[CHARACTER_CARD] User logged out, opening auth modal with character intent:", character.id)
-    openModal({
-      type: "open_character",
-      characterId: character.id,
-      scrollTo: "moments",
-    })
+    console.log("[CHARACTER_CARD] User logged out, opening auth modal with character intent:", characterId)
+    try {
+      openModal({
+        type: "open_character",
+        characterId: characterId,
+        scrollTo: "moments",
+      })
+    } catch (error) {
+      console.error("[CHARACTER_CARD] Failed to open auth modal:", error)
+      // Fallback: try direct navigation as last resort
+      if (typeof window !== "undefined") {
+        window.location.href = `/s/${characterId}?scrollTo=moments`
+      }
+    }
   }
 
   return (
@@ -70,8 +98,8 @@ export function CharacterCard({ character }: CharacterCardProps) {
       )}
     >
       <div className="relative aspect-[3/4] w-full overflow-hidden">
-        {/* Gradient overlay */}
-        <div className="absolute inset-0 z-10 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+        {/* Gradient overlay - must not block clicks */}
+        <div className="absolute inset-0 z-10 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
 
         {!imageError ? (
           <Image
@@ -93,11 +121,11 @@ export function CharacterCard({ character }: CharacterCardProps) {
         ) : (
           <div
             className={cn(
-              "absolute inset-0 bg-gradient-to-br flex items-center justify-center",
+              "absolute inset-0 bg-gradient-to-br flex items-center justify-center pointer-events-none",
               getCharacterGradient(character.name),
             )}
           >
-            <div className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center border border-white/20">
+            <div className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center border border-white/20 pointer-events-none">
               <span className="text-xl font-semibold text-white">{character.name[0]}</span>
             </div>
           </div>
@@ -105,12 +133,12 @@ export function CharacterCard({ character }: CharacterCardProps) {
 
         {!isLoaded && !imageError && (
           <div
-            className={cn("absolute inset-0 bg-gradient-to-br animate-pulse", getCharacterGradient(character.name))}
+            className={cn("absolute inset-0 bg-gradient-to-br animate-pulse pointer-events-none", getCharacterGradient(character.name))}
           />
         )}
 
-        {/* Message count badge */}
-        <div className="absolute bottom-1.5 left-1.5 z-20 flex items-center gap-1 rounded-full bg-black/60 backdrop-blur-sm px-1.5 py-0.5">
+        {/* Message count badge - decorative only, must not block clicks */}
+        <div className="absolute bottom-1.5 left-1.5 z-20 flex items-center gap-1 rounded-full bg-black/60 backdrop-blur-sm px-1.5 py-0.5 pointer-events-none">
           <MessageCircle className="h-2.5 w-2.5 text-green-400 fill-green-400" />
           <span className="text-[10px] font-medium text-white">{formatNumber(character.stats.chats)}</span>
         </div>
