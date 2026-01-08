@@ -71,7 +71,7 @@ const MOMENT_PRICES: Record<MomentLevel, number> = {
 
 function formatPrice(cents: number): string {
   if (cents === 0) return "Free"
-  return `€${(cents / 100).toFixed(2)}`
+  return `$${(cents / 100).toFixed(2)}`
 }
 
 // ============================================================================
@@ -305,27 +305,134 @@ function MomentsGallery({
   }
 
   return (
-    <section className="mb-8 md:mb-12">
-      {/* Desktop: Top row (Free + Private), Bottom row (Dark Side centered, wider) */}
-      {/* Mobile: Order (Private → Free → Dark Side) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 lg:gap-6 mb-4 md:mb-6">
-        {/* Mobile: Private first, Desktop: Free first */}
-        <div className="order-2 md:order-1">
-          {freeMoments.map((situation) => (
-            <MomentCardFree
-              key={situation.id}
-              situation={situation}
-              character={character}
-              isActive={activeMoment?.id === situation.id}
-              onClick={() => onMomentClick(situation)}
-              onHover={() => onMomentHover(situation)}
-              onHoverEnd={() => onMomentHover(null)}
-            />
-          ))}
+    <section className="mb-6 md:mb-8">
+      {/* Desktop: 2-column asymmetrical layout (Dark Side always visible) */}
+      {/* Mobile: Dark Side first (peek effect), then Private, then Free */}
+      <div className="max-w-[1200px] lg:max-w-[1400px] mx-auto">
+        {/* Desktop Layout: 2 columns */}
+        <div className="hidden lg:grid lg:grid-cols-2 gap-4 lg:gap-5">
+          {/* LEFT COLUMN: Stacked Free + Private */}
+          <div className="flex flex-col gap-4 lg:gap-5">
+            {/* Free card (top) */}
+            {freeMoments.map((situation) => (
+              <MomentCardFree
+                key={situation.id}
+                situation={situation}
+                character={character}
+                isActive={activeMoment?.id === situation.id}
+                onClick={() => onMomentClick(situation)}
+                onHover={() => onMomentHover(situation)}
+                onHoverEnd={() => onMomentHover(null)}
+              />
+            ))}
+            {/* Private/Intimate card (bottom) */}
+            {[...privateMoments, ...intimateMoments].slice(0, 1).map((situation) => {
+              const isUnlocked = isMomentUnlocked(situation, character.id, entitlements)
+              return (
+                <MomentCardPremium
+                  key={situation.id}
+                  situation={situation}
+                  character={character}
+                  isUnlocked={isUnlocked}
+                  isActive={activeMoment?.id === situation.id}
+                  tier={situation.momentLevel === "private" ? "private" : "intimate"}
+                  onClick={() => onMomentClick(situation)}
+                  onHover={() => onMomentHover(situation)}
+                  onHoverEnd={() => onMomentHover(null)}
+                  onPlusClick={() => {
+                    onMomentClick({
+                      id: "plus",
+                      title: "WHISPR Plus",
+                      description: "",
+                      tags: [],
+                      isPaid: true,
+                      momentLevel: "private",
+                    })
+                  }}
+                />
+              )
+            })}
+          </div>
+
+          {/* RIGHT COLUMN: Dark Side (tall, always visible) */}
+          {exclusiveMoments.length > 0 && (
+            <div className="relative">
+              {exclusiveMoments.map((situation) => {
+                const isUnlocked = isMomentUnlocked(situation, character.id, entitlements)
+                return (
+                  <div key={situation.id} className="relative">
+                    <MomentCardDarkSide
+                      situation={situation}
+                      character={character}
+                      isUnlocked={isUnlocked}
+                      isActive={activeMoment?.id === situation.id}
+                      onClick={() => onMomentClick(situation)}
+                      onHover={() => onMomentHover(situation)}
+                      onHoverEnd={() => onMomentHover(null)}
+                      onPlusClick={() => {
+                        onMomentClick({
+                          id: "plus",
+                          title: "WHISPR Plus",
+                          description: "",
+                          tags: [],
+                          isPaid: true,
+                          momentLevel: "private",
+                        })
+                      }}
+                    />
+                    {/* Micro social proof */}
+                    <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 z-10">
+                      <span className="px-2.5 py-1 rounded-full bg-orange-500/10 backdrop-blur-sm border border-orange-500/20 text-[10px] font-medium text-orange-300/80">
+                        🔥 2,184 entered today
+                      </span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
 
-        {/* Mobile: Private first, Desktop: Private second (visually dominant) */}
-        <div className="order-1 md:order-2">
+        {/* Mobile Layout: Dark Side first (peek), then Private, then Free */}
+        <div className="lg:hidden flex flex-col gap-3">
+          {/* 1. Dark Side (first, peek effect) */}
+          {exclusiveMoments.length > 0 && (
+            <div className="relative">
+              {exclusiveMoments.map((situation) => {
+                const isUnlocked = isMomentUnlocked(situation, character.id, entitlements)
+                return (
+                  <div key={situation.id} className="relative">
+                    <MomentCardDarkSide
+                      situation={situation}
+                      character={character}
+                      isUnlocked={isUnlocked}
+                      isActive={activeMoment?.id === situation.id}
+                      onClick={() => onMomentClick(situation)}
+                      onHover={() => onMomentHover(situation)}
+                      onHoverEnd={() => onMomentHover(null)}
+                      onPlusClick={() => {
+                        onMomentClick({
+                          id: "plus",
+                          title: "WHISPR Plus",
+                          description: "",
+                          tags: [],
+                          isPaid: true,
+                          momentLevel: "private",
+                        })
+                      }}
+                    />
+                    {/* Micro social proof */}
+                    <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 z-10">
+                      <span className="px-2.5 py-1 rounded-full bg-orange-500/10 backdrop-blur-sm border border-orange-500/20 text-[10px] font-medium text-orange-300/80">
+                        🔥 2,184 entered today
+                      </span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+          {/* 2. Private/Intimate (second) */}
           {[...privateMoments, ...intimateMoments].slice(0, 1).map((situation) => {
             const isUnlocked = isMomentUnlocked(situation, character.id, entitlements)
             return (
@@ -352,48 +459,20 @@ function MomentsGallery({
               />
             )
           })}
+          {/* 3. Free (third) */}
+          {freeMoments.map((situation) => (
+            <MomentCardFree
+              key={situation.id}
+              situation={situation}
+              character={character}
+              isActive={activeMoment?.id === situation.id}
+              onClick={() => onMomentClick(situation)}
+              onHover={() => onMomentHover(situation)}
+              onHoverEnd={() => onMomentHover(null)}
+            />
+          ))}
         </div>
       </div>
-
-      {/* Dark Side: Mobile order-3, Desktop centered and wider - VISUALLY DOMINANT */}
-      {exclusiveMoments.length > 0 && (
-        <div className="order-3 flex justify-center mb-8">
-          <div className="w-full md:max-w-[85%] lg:max-w-6xl relative">
-            {exclusiveMoments.map((situation) => {
-              const isUnlocked = isMomentUnlocked(situation, character.id, entitlements)
-              return (
-                <div key={situation.id} className="relative">
-                  <MomentCardDarkSide
-                    situation={situation}
-                    character={character}
-                    isUnlocked={isUnlocked}
-                    isActive={activeMoment?.id === situation.id}
-                    onClick={() => onMomentClick(situation)}
-                    onHover={() => onMomentHover(situation)}
-                    onHoverEnd={() => onMomentHover(null)}
-                    onPlusClick={() => {
-                      onMomentClick({
-                        id: "plus",
-                        title: "WHISPR Plus",
-                        description: "",
-                        tags: [],
-                        isPaid: true,
-                        momentLevel: "private",
-                      })
-                    }}
-                  />
-                  {/* Micro social proof */}
-                  <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 z-10">
-                    <span className="px-2.5 py-1 rounded-full bg-orange-500/10 backdrop-blur-sm border border-orange-500/20 text-[10px] font-medium text-orange-300/80">
-                      🔥 2,184 unlocked today
-                    </span>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
     </section>
   )
 }
@@ -447,10 +526,11 @@ function MomentCardFree({
   return (
     <div
       className={cn(
-        "group relative h-[380px] md:h-[450px] lg:h-[480px] rounded-3xl overflow-hidden transition-all duration-500 cursor-pointer",
+        "group relative h-[300px] md:h-[340px] lg:h-[420px] xl:h-[480px] rounded-3xl overflow-hidden transition-all duration-500 cursor-pointer",
+        // Mobile: no blur/dim, desktop: subtle hover effect
         isActive || isSelected
-          ? "scale-[1.01] md:scale-[1.02] shadow-2xl shadow-blue-500/20 z-10 ring-2 ring-blue-400/40"
-          : "md:opacity-70 md:hover:opacity-100 md:hover:scale-[1.02]",
+          ? "scale-[1.01] shadow-2xl shadow-blue-500/20 z-10 ring-2 ring-blue-400/40"
+          : "lg:opacity-90 lg:hover:opacity-100 lg:hover:scale-[1.01]",
       )}
       onClick={handleCardClick}
       onMouseEnter={onHover}
@@ -462,8 +542,8 @@ function MomentCardFree({
             src={imageSrc}
             alt={situation.title || "Moment"}
             fill
-            className="object-cover transition-transform duration-700 md:group-hover:scale-105"
-            sizes="(max-width: 768px) 100vw, 50vw"
+            className="object-cover transition-transform duration-700 lg:group-hover:scale-105"
+            sizes="(max-width: 1024px) 100vw, 50vw"
             loading="lazy"
             onError={() => setImageError(true)}
             // ALWAYS sharp - no blur on mobile or desktop
@@ -480,14 +560,15 @@ function MomentCardFree({
       {/* Desirable label */}
       <div className="absolute top-3 left-3 z-20">
         <span className="px-2 py-1 rounded-full bg-blue-500/20 backdrop-blur-sm border border-blue-400/30 text-[10px] font-semibold text-blue-200">
-          Most chosen 🌙
+          Free tonight 🌙
         </span>
       </div>
 
       <div className="absolute bottom-0 left-0 right-0 p-4 md:p-5 z-10">
-        <h3 className="text-base md:text-lg font-bold text-white mb-2 line-clamp-1">
+        <h3 className="text-base md:text-lg font-bold text-white mb-1 line-clamp-1">
           {situation.title || "Late night talk"} 🌙
         </h3>
+        <p className="text-xs text-gray-300 mb-2">Start slow.</p>
         <div className="flex items-end justify-end">
           <button
             onClick={handleCTAClick}
@@ -560,13 +641,14 @@ function MomentCardPremium({
   return (
     <div
       className={cn(
-        "group relative h-[380px] md:h-[450px] lg:h-[480px] rounded-3xl overflow-hidden transition-all duration-500 cursor-pointer",
+        "group relative h-[320px] md:h-[360px] lg:h-[420px] xl:h-[480px] rounded-3xl overflow-hidden transition-all duration-500 cursor-pointer",
         isUnlocked
           ? "bg-green-500/5"
           : "bg-[#1a1a1a]",
+        // Mobile: no blur/dim, desktop: subtle hover effect
         isActive || isSelected
-          ? "scale-[1.01] md:scale-[1.02] shadow-2xl shadow-violet-500/50 z-10 ring-2 ring-violet-400/60"
-          : "md:opacity-70 md:hover:opacity-100 md:hover:scale-[1.02]",
+          ? "scale-[1.01] shadow-2xl shadow-violet-500/50 z-10 ring-2 ring-violet-400/60"
+          : "lg:opacity-90 lg:hover:opacity-100 lg:hover:scale-[1.01]",
       )}
       onClick={handleCardClick}
       onMouseEnter={onHover}
@@ -578,11 +660,11 @@ function MomentCardPremium({
             src={imageSrc}
             alt={situation.title || "Moment"}
             fill
-            className="object-cover transition-transform duration-700 md:group-hover:scale-105"
-            sizes="(max-width: 768px) 100vw, 50vw"
+            className="object-cover transition-transform duration-700 lg:group-hover:scale-105"
+            sizes="(max-width: 1024px) 100vw, 50vw"
             loading="lazy"
             onError={() => setImageError(true)}
-            // ALWAYS sharp on mobile, sharp on desktop
+            // ALWAYS sharp - no blur on mobile or desktop
           />
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-violet-600/80 to-purple-900/80" />
@@ -624,9 +706,12 @@ function MomentCardPremium({
       )}
 
       <div className="absolute bottom-0 left-0 right-0 p-4 md:p-5 z-10">
-        <h3 className="text-base md:text-lg font-bold text-white mb-2 line-clamp-1">
+        <h3 className="text-base md:text-lg font-bold text-white mb-1 line-clamp-1">
           {situation.title || (isPrivate ? "Private moment" : "Intimate moment")} {isPrivate ? "😳" : "💜"}
         </h3>
+        <p className="text-xs text-gray-300 mb-2">
+          {isPrivate ? "He sits closer." : "His voice gets low."}
+        </p>
         <div className="flex items-end justify-end">
           {isUnlocked ? (
             <button
@@ -705,13 +790,13 @@ function MomentCardDarkSide({
   return (
     <div
       className={cn(
-        "group relative h-[440px] md:h-[520px] lg:h-[560px] rounded-3xl overflow-hidden border-2 transition-all duration-500 cursor-pointer",
+        "group relative h-[380px] md:h-[430px] lg:h-[860px] xl:h-[980px] rounded-3xl overflow-hidden border-2 transition-all duration-500 cursor-pointer",
         isUnlocked
           ? "bg-green-500/5 border-green-500/30"
           : "bg-[#0a0a0a] border-orange-500/60",
         isActive || isSelected
-          ? "scale-[1.01] md:scale-[1.02] border-orange-500/80 shadow-2xl shadow-orange-500/60 z-10 ring-2 ring-orange-500/70"
-          : "md:opacity-75 hover:opacity-90 hover:scale-[1.01] hover:border-orange-500/70",
+          ? "scale-[1.01] border-orange-500/80 shadow-2xl shadow-orange-500/60 z-10 ring-2 ring-orange-500/70"
+          : "lg:opacity-95 lg:hover:opacity-100 lg:hover:scale-[1.005] hover:border-orange-500/70",
       )}
       onClick={handleCardClick}
       onMouseEnter={onHover}
@@ -722,25 +807,25 @@ function MomentCardDarkSide({
       )}
 
       <div className="absolute inset-0">
-        {/* CRITICAL: Always render Image first, even if it might error - blur is applied via CSS */}
+        {/* CRITICAL: Always render Image as bottom layer - MUST be real image, never flat gradient */}
         <Image
           src={imageSrc}
           alt={situation.title || "Dark side"}
           fill
           className={cn(
-            "object-cover transition-transform duration-700 md:group-hover:scale-105",
+            "object-cover transition-transform duration-700 lg:group-hover:scale-105",
             // ALWAYS heavily blurred - forbidden aesthetic (even when unlocked)
-            "blur-[20px] md:blur-[24px]"
+            "blur-[18px] md:blur-[20px] lg:blur-[22px]"
           )}
-          sizes="(max-width: 768px) 100vw, 85vw"
+          sizes="(max-width: 1024px) 100vw, 50vw"
           loading="lazy"
           onError={() => setImageError(true)}
         />
-        {/* Fallback gradient ONLY if image completely fails - but image should always be there */}
+        {/* Fallback gradient ONLY if image completely fails to load */}
         {imageError && (
-          <div className="absolute inset-0 bg-gradient-to-br from-orange-600/80 to-red-900/80 blur-[20px]" />
+          <div className="absolute inset-0 bg-gradient-to-br from-orange-600/80 to-red-900/80 blur-[18px] md:blur-[20px] lg:blur-[22px]" />
         )}
-        {/* Heavy dark gradient */}
+        {/* Heavy dark gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/95 to-black/85" />
         {/* Red/orange glow overlay - dangerous, forbidden */}
         <div className="absolute inset-0 bg-gradient-to-br from-red-500/12 via-orange-500/10 to-transparent" />
@@ -751,9 +836,9 @@ function MomentCardDarkSide({
             background: "radial-gradient(circle at center, transparent 0%, transparent 20%, rgba(0,0,0,0.85) 100%)",
           }}
         />
-        {/* Grain overlay - adds texture, forbidden aesthetic */}
+        {/* Grain overlay - adds texture, forbidden aesthetic (opacity 0.25-0.40) */}
         <div
-          className="absolute inset-0 opacity-[0.4]"
+          className="absolute inset-0 opacity-[0.30]"
           style={{
             backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
             mixBlendMode: "overlay",
@@ -777,27 +862,30 @@ function MomentCardDarkSide({
         </div>
       )}
 
-      <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6 z-10">
-        <h3 className="text-lg md:text-xl font-bold text-white mb-2 line-clamp-1">
+      <div className="absolute bottom-0 left-0 right-0 p-4 md:p-5 lg:p-6 z-10">
+        <h3 className="text-lg md:text-xl lg:text-2xl font-bold text-white mb-1 line-clamp-1">
           {situation.title || "Dark side"} 🖤🔥
         </h3>
-        <div className="flex items-end justify-end">
+        <div className="flex items-end justify-end mt-3">
           {isUnlocked ? (
             <button
               onClick={handleCTAClick}
-              className="h-11 rounded-xl bg-green-500 hover:bg-green-600 text-white font-semibold text-sm px-6 transition-all shadow-xl shadow-green-500/50 flex items-center gap-2"
+              className="h-11 lg:h-12 rounded-xl bg-green-500 hover:bg-green-600 text-white font-semibold text-sm px-6 transition-all shadow-xl shadow-green-500/50 flex items-center gap-2"
             >
               <Sparkles className="h-3.5 w-3.5" />
               Start
             </button>
           ) : (
-            <button
-              onClick={handleCTAClick}
-              className="h-11 rounded-xl bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white font-bold text-sm px-6 transition-all shadow-xl shadow-orange-500/60 flex items-center gap-2 animate-pulse"
-            >
-              <Zap className="h-3.5 w-3.5" />
-              Enter — {price} 🔥
-            </button>
+            <div className="flex flex-col items-end gap-1.5">
+              <button
+                onClick={handleCTAClick}
+                className="h-11 lg:h-12 rounded-xl bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white font-bold text-sm px-6 transition-all shadow-xl shadow-orange-500/60 flex items-center gap-2 animate-pulse"
+              >
+                <Zap className="h-3.5 w-3.5" />
+                Enter Dark Side — {price} 🔥
+              </button>
+              <p className="text-[10px] text-orange-300/70">Most unlocked tonight</p>
+            </div>
           )}
         </div>
       </div>
@@ -1082,10 +1170,9 @@ function MediaTab({
   }, [])
 
   const lockedCount = mediaItems.filter((item) => item.isLocked && !isMediaUnlocked(item.id)).length
-  const mediaPrice = formatPrice(399) // €3.99 for media unlock
+  const mediaPrice = formatPrice(399) // $3.99 for media unlock
 
   const totalItems = mediaItems.length
-  const lockedItems = mediaItems.filter((item) => item.isLocked && !isMediaUnlocked(item.id)).length
   const photoCount = mediaItems.filter((item) => item.type === "image").length
   const clipCount = mediaItems.filter((item) => item.type === "video").length
 
@@ -1208,7 +1295,7 @@ function MediaTab({
       {/* Sticky mini CTA for Media tab - lightweight */}
       {showStickyCTA && lockedCount > 0 && (
         <div className="fixed bottom-0 left-0 right-0 z-50 border-t backdrop-blur-md border-white/10 bg-[#0a0a0a]/98">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
             <div className="flex items-center justify-between gap-3">
               <span className="text-sm font-semibold text-white flex-1 min-w-0">
                 Unlock media — {mediaPrice}
@@ -1276,7 +1363,7 @@ function StickyCTABar({
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 border-t backdrop-blur-md border-white/10 bg-[#0a0a0a]/98">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
         <div className="flex items-center justify-between gap-3">
           <span className="text-sm font-semibold text-white line-clamp-1 flex-1 min-w-0">
             {ctaText}
