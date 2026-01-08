@@ -245,21 +245,21 @@ function isMomentUnlocked(
 
 function CharacterHeader({ character }: { character: SafeCharacter }) {
   return (
-    <div className="mb-3 md:mb-4">
+    <div className="mb-2 md:mb-4">
       <Link
         href="/discover"
-        className="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-white transition-colors mb-2 md:mb-2.5"
+        className="inline-flex items-center gap-1.5 text-sm md:text-xs text-gray-400 hover:text-white transition-colors mb-1.5 md:mb-2.5"
       >
-        <ArrowLeft className="h-3.5 w-3.5" />
+        <ArrowLeft className="h-4 w-4 md:h-3.5 md:w-3.5" />
         Back
       </Link>
-      <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-1 tracking-tight leading-tight">
+      <h1 className="text-3xl md:text-2xl lg:text-3xl xl:text-4xl font-bold text-white mb-1 md:mb-1 tracking-tight leading-tight">
         {character.name}
       </h1>
       {character.tags.length > 0 && (
         <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
           {character.tags.slice(0, 4).map((tag, idx) => (
-            <span key={idx} className="text-[10px] text-gray-400 lowercase whitespace-nowrap">
+            <span key={idx} className="text-xs md:text-[10px] text-gray-400 lowercase whitespace-nowrap">
               {tag}
             </span>
           ))}
@@ -565,16 +565,16 @@ function MomentCardFree({
       </div>
 
       <div className="absolute bottom-0 left-0 right-0 p-4 md:p-5 z-10">
-        <h3 className="text-base md:text-lg font-bold text-white mb-1 line-clamp-1">
+        <h3 className="text-lg md:text-lg font-bold text-white mb-1 line-clamp-1">
           {situation.title || "Late night talk"} 🌙
         </h3>
-        <p className="text-xs text-gray-300 mb-2">Start slow.</p>
+        <p className="text-base md:text-xs text-gray-300 mb-2">Start slow.</p>
         <div className="flex items-end justify-end">
           <button
             onClick={handleCTAClick}
-            className="h-11 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-semibold text-sm px-6 transition-all shadow-lg shadow-blue-500/30 flex items-center gap-2"
+            className="h-11 min-h-[44px] rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-semibold text-base md:text-sm px-6 transition-all shadow-lg shadow-blue-500/30 flex items-center gap-2"
           >
-            <Sparkles className="h-3.5 w-3.5" />
+            <Sparkles className="h-4 w-4 md:h-3.5 md:w-3.5" />
             Start
           </button>
         </div>
@@ -706,27 +706,27 @@ function MomentCardPremium({
       )}
 
       <div className="absolute bottom-0 left-0 right-0 p-4 md:p-5 z-10">
-        <h3 className="text-base md:text-lg font-bold text-white mb-1 line-clamp-1">
+        <h3 className="text-lg md:text-lg font-bold text-white mb-1 line-clamp-1">
           {situation.title || (isPrivate ? "Private moment" : "Intimate moment")} {isPrivate ? "😳" : "💜"}
         </h3>
-        <p className="text-xs text-gray-300 mb-2">
+        <p className="text-base md:text-xs text-gray-300 mb-2">
           {isPrivate ? "He sits closer." : "His voice gets low."}
         </p>
         <div className="flex items-end justify-end">
           {isUnlocked ? (
             <button
               onClick={handleCTAClick}
-              className="h-11 rounded-xl bg-green-500 hover:bg-green-600 text-white font-semibold text-sm px-6 transition-all shadow-lg shadow-green-500/40 flex items-center gap-2"
+              className="h-11 min-h-[44px] rounded-xl bg-green-500 hover:bg-green-600 text-white font-semibold text-base md:text-sm px-6 transition-all shadow-lg shadow-green-500/40 flex items-center gap-2"
             >
-              <Sparkles className="h-3.5 w-3.5" />
+              <Sparkles className="h-4 w-4 md:h-3.5 md:w-3.5" />
               Start
             </button>
           ) : (
             <button
               onClick={handleCTAClick}
-              className="h-11 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-semibold text-sm px-6 transition-all shadow-xl shadow-violet-500/50 flex items-center gap-2"
+              className="h-11 min-h-[44px] rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-semibold text-base md:text-sm px-6 transition-all shadow-xl shadow-violet-500/50 flex items-center gap-2"
             >
-              <Lock className="h-3.5 w-3.5" />
+              <Lock className="h-4 w-4 md:h-3.5 md:w-3.5" />
               Unlock — {price}
             </button>
           )}
@@ -870,21 +870,21 @@ function MomentCardDarkSide({
           {isUnlocked ? (
             <button
               onClick={handleCTAClick}
-              className="h-11 lg:h-12 rounded-xl bg-green-500 hover:bg-green-600 text-white font-semibold text-sm px-6 transition-all shadow-xl shadow-green-500/50 flex items-center gap-2"
+              className="h-11 min-h-[44px] lg:h-12 rounded-xl bg-green-500 hover:bg-green-600 text-white font-semibold text-base md:text-sm px-6 transition-all shadow-xl shadow-green-500/50 flex items-center gap-2"
             >
-              <Sparkles className="h-3.5 w-3.5" />
+              <Sparkles className="h-4 w-4 md:h-3.5 md:w-3.5" />
               Start
             </button>
           ) : (
             <div className="flex flex-col items-end gap-1.5">
               <button
                 onClick={handleCTAClick}
-                className="h-11 lg:h-12 rounded-xl bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white font-bold text-sm px-6 transition-all shadow-xl shadow-orange-500/60 flex items-center gap-2 animate-pulse"
+                className="h-11 min-h-[44px] lg:h-12 rounded-xl bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white font-bold text-base md:text-sm px-6 transition-all shadow-xl shadow-orange-500/60 flex items-center gap-2 animate-pulse"
               >
-                <Zap className="h-3.5 w-3.5" />
+                <Zap className="h-4 w-4 md:h-3.5 md:w-3.5" />
                 Enter Dark Side — {price} 🔥
               </button>
-              <p className="text-[10px] text-orange-300/70">Most unlocked tonight</p>
+              <p className="text-xs md:text-[10px] text-orange-300/70">Most unlocked tonight</p>
             </div>
           )}
         </div>
@@ -990,7 +990,7 @@ function ChatTab({
               </div>
               <div className="flex-1">
                 <div className="rounded-lg bg-[#151515] border border-white/5 p-4">
-                  <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-line">
+                  <p className="text-base md:text-sm text-gray-300 leading-relaxed whitespace-pre-line">
                     {character.scenarioIntro}
                     {"\n\n"}
                     <span className="text-white">"{character.greetingOptions[0]}"</span>
@@ -1001,7 +1001,7 @@ function ChatTab({
                     <button
                       key={phrase}
                       onClick={() => setInput(phrase)}
-                      className="rounded-full bg-white/5 border border-white/10 px-3 py-1.5 text-xs text-gray-400 hover:bg-white/10 hover:text-white transition-colors"
+                      className="rounded-full bg-white/5 border border-white/10 px-3 py-2 md:py-1.5 text-sm md:text-xs text-gray-400 hover:bg-white/10 hover:text-white transition-colors min-h-[44px] md:min-h-0"
                     >
                       {phrase}
                     </button>
@@ -1039,7 +1039,7 @@ function ChatTab({
                       : "bg-[#151515] text-gray-300 border border-white/5",
                   )}
                 >
-                  <p className="text-sm whitespace-pre-line">{message.content}</p>
+                  <p className="text-base md:text-sm whitespace-pre-line">{message.content}</p>
                 </div>
               </div>
             </div>
@@ -1375,7 +1375,7 @@ function StickyCTABar({
             }}
             disabled={isOpeningCheckout}
             className={cn(
-              "px-5 py-2 rounded-xl text-white font-semibold text-sm transition-colors disabled:opacity-50 shadow-lg h-9",
+              "px-5 py-2.5 rounded-xl text-white font-semibold text-base md:text-sm transition-colors disabled:opacity-50 shadow-lg min-h-[44px] md:h-9",
               isDarkSide && !isUnlocked
                 ? "bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 shadow-orange-500/50 animate-pulse"
                 : "bg-violet-600 hover:bg-violet-700 shadow-violet-500/40"
@@ -1679,7 +1679,7 @@ export default function CharacterPage() {
     <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
       {/* Header with tabs */}
       <div className="sticky top-0 z-40 bg-[#0a0a0a]/95 backdrop-blur-md border-b border-white/5">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12">
+        <div className="max-w-[1400px] mx-auto px-3 sm:px-6 lg:px-8 xl:px-12">
           <CharacterHeader character={character} />
           
           {/* Premium Segmented Control Tabs */}
@@ -1687,7 +1687,7 @@ export default function CharacterPage() {
             <button
               onClick={() => setActiveTab("moments")}
               className={cn(
-                "px-4 py-2 text-sm font-medium transition-all rounded-md flex-1",
+                "px-3 md:px-4 py-2 text-sm font-medium transition-all rounded-md flex-1",
                 activeTab === "moments"
                   ? "text-white bg-violet-500/20 shadow-lg shadow-violet-500/20 border border-violet-400/30"
                   : "text-gray-400 hover:text-white"
@@ -1698,7 +1698,7 @@ export default function CharacterPage() {
             <button
               onClick={() => setActiveTab("chat")}
               className={cn(
-                "px-4 py-2 text-sm font-medium transition-all rounded-md flex-1",
+                "px-3 md:px-4 py-2 text-sm font-medium transition-all rounded-md flex-1",
                 activeTab === "chat"
                   ? "text-white bg-violet-500/20 shadow-lg shadow-violet-500/20 border border-violet-400/30"
                   : "text-gray-400 hover:text-white"
@@ -1709,7 +1709,7 @@ export default function CharacterPage() {
             <button
               onClick={() => setActiveTab("media")}
               className={cn(
-                "px-4 py-2 text-sm font-medium transition-all rounded-md flex-1",
+                "px-3 md:px-4 py-2 text-sm font-medium transition-all rounded-md flex-1",
                 activeTab === "media"
                   ? "text-white bg-violet-500/20 shadow-lg shadow-violet-500/20 border border-violet-400/30"
                   : "text-gray-400 hover:text-white"
@@ -1723,7 +1723,7 @@ export default function CharacterPage() {
 
       {/* Tab content */}
       <div className="flex-1 overflow-y-auto pb-20 sm:pb-24">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-4 md:py-6 lg:py-8">
+        <div className="max-w-[1400px] mx-auto px-3 sm:px-6 lg:px-8 xl:px-12 py-3 md:py-6 lg:py-8">
           {activeTab === "moments" && (
             <>
               <MomentsGallery

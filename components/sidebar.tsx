@@ -25,7 +25,7 @@ export function Sidebar() {
   const bottomItems = user.isLoggedIn ? [{ href: "/profile", labelKey: "chat", icon: MessageCircle }] : []
 
   return (
-    <aside className="fixed left-0 top-0 z-40 flex h-screen w-56 flex-col bg-[#0d0d0d] border-r border-white/5">
+    <aside className="hidden md:flex fixed left-0 top-0 z-40 h-screen w-56 flex-col bg-[#0d0d0d] border-r border-white/5">
       {/* Logo */}
       <div className="flex h-14 items-center gap-2 px-4">
         <img src="/logo-cat.png" alt="WHISPR Logo" className="object-contain my-0 px-0 w-12 h-12 mx-0" />

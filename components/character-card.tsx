@@ -182,15 +182,15 @@ export function CharacterCard({ character }: CharacterCardProps) {
         </div>
       </div>
 
-      <div className="flex flex-col gap-0.5 p-2">
-        <h3 className="font-medium text-white text-xs leading-tight truncate group-hover:text-violet-300 transition-colors">
+      <div className="flex flex-col gap-1 p-2.5 md:p-2">
+        <h3 className="font-semibold text-white text-base md:text-xs leading-tight truncate group-hover:text-violet-300 transition-colors">
           {character.name}
         </h3>
-        <p className="text-[10px] text-gray-500 line-clamp-2 leading-snug min-h-[1.75rem]">{character.description}</p>
+        <p className="text-base md:text-[10px] text-gray-500 line-clamp-2 leading-snug min-h-[1.75rem]">{character.description}</p>
 
         <div className="flex flex-wrap gap-1 mt-0.5">
           {character.tags.slice(0, 3).map((tag) => (
-            <span key={tag} className="rounded bg-white/5 px-1 py-0.5 text-[9px] text-gray-600">
+            <span key={tag} className="rounded bg-white/5 px-1.5 py-0.5 text-xs md:text-[9px] text-gray-600">
               {tag}
             </span>
           ))}

@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { Sidebar } from "@/components/sidebar"
+import { MobileTopBar } from "@/components/mobile-topbar"
 import { AuthModalProvider } from "@/components/auth-modal-provider"
 import { I18nProvider } from "@/components/i18n-provider"
 import { Toaster } from "@/components/ui/toaster"
@@ -26,9 +27,17 @@ export default function RootLayout({
       <body className={`${inter.className} antialiased bg-[#0d0d0d] text-white overflow-x-hidden max-w-screen`}>
         <I18nProvider>
           <AuthModalProvider>
+            {/* Mobile topbar (only on mobile) */}
+            <MobileTopBar />
+            
             <div className="flex min-h-screen w-full max-w-full overflow-x-hidden">
+              {/* Desktop sidebar (only on md+) */}
               <Sidebar />
-              <main className="flex-1 min-w-0 ml-56 max-w-[calc(100vw-14rem)] overflow-x-hidden">{children}</main>
+              
+              {/* Main content - full width on mobile, with margin on desktop */}
+              <main className="flex-1 min-w-0 md:ml-56 w-full md:max-w-[calc(100vw-14rem)] overflow-x-hidden">
+                {children}
+              </main>
             </div>
           </AuthModalProvider>
         </I18nProvider>

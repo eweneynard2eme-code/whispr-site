@@ -26,19 +26,19 @@ export default function DiscoverPage() {
     <div className="min-h-screen bg-[#0d0d0d] overflow-x-hidden">
       <TopBar />
 
-      <div className="px-3 py-3">
+      <div className="px-2 md:px-3 py-2 md:py-3">
         {/* Title and filters */}
-        <div className="mb-2 flex items-center gap-4">
-          <h1 className="text-lg font-bold text-white">{t("forYou")}</h1>
+        <div className="mb-2 md:mb-2 flex items-center gap-3 md:gap-4">
+          <h1 className="text-2xl md:text-lg font-bold text-white">{t("forYou")}</h1>
           <GenderFilter selected={selectedGender} onSelect={setSelectedGender} />
         </div>
 
         {/* Category chips */}
-        <div className="mb-3">
+        <div className="mb-2 md:mb-3">
           <CategoryChips selected={selectedCategory} onSelect={setSelectedCategory} />
         </div>
 
-        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+        <div className="grid grid-cols-2 gap-2 md:gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
           {filteredCharacters.map((character) => (
             <CharacterCard key={character.id} character={character} />
           ))}
