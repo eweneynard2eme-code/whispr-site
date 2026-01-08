@@ -103,14 +103,37 @@ export function AuthModalProvider({ children }: { children: ReactNode }) {
             
             console.log("[AUTH] Opening character:", characterId, "scrollTo:", scrollTo)
             
-            // Use router.push with error handling
+            const targetUrl = `/s/${encodeURIComponent(characterId)}?scrollTo=${encodeURIComponent(scrollTo)}`
+            
+            // Use router.push with error handling and timeout fallback
             try {
-              router.push(`/s/${encodeURIComponent(characterId)}?scrollTo=${encodeURIComponent(scrollTo)}`)
+              const currentPath = typeof window !== "undefined" ? window.location.pathname : ""
+              router.push(targetUrl)
+              
+              // Fallback: if navigation doesn't happen within 300ms, use window.location
+              const timeoutId = setTimeout(() => {
+                const newPath = typeof window !== "undefined" ? window.location.pathname : ""
+                if (newPath === currentPath) {
+                  // Navigation didn't happen, use fallback
+                  console.warn("[AUTH] Router push timeout, using window.location fallback")
+                  if (typeof window !== "undefined") {
+                    window.location.href = targetUrl
+                  }
+                }
+              }, 300)
+              
+              // Check after a short delay if navigation happened
+              setTimeout(() => {
+                const newPath = typeof window !== "undefined" ? window.location.pathname : ""
+                if (newPath !== currentPath && newPath.includes(`/s/${encodeURIComponent(characterId)}`)) {
+                  clearTimeout(timeoutId)
+                }
+              }, 100)
             } catch (routerError) {
-              console.error("[AUTH] Router push failed:", routerError)
+              console.error("[AUTH] Router push failed, using fallback:", routerError)
               // Fallback to window.location if router fails
               if (typeof window !== "undefined") {
-                window.location.href = `/s/${encodeURIComponent(characterId)}?scrollTo=${encodeURIComponent(scrollTo)}`
+                window.location.href = targetUrl
               } else {
                 throw new Error("Navigation failed")
               }
@@ -205,7 +228,12 @@ export function AuthModalProvider({ children }: { children: ReactNode }) {
     // This prevents modal from opening during auth state hydration
     if (isLoading || isLoggedIn) {
       if (isLoading) {
-        console.log("[AUTH] Auth state loading, skipping modal open")
+        console.log("[AUTH] Auth state loading, storing intent for later execution:", intent)
+        // Store intent even when loading - it will execute after auth resolves
+        if (intent) {
+          setCurrentIntent(intent)
+          storeIntent(intent)
+        }
         return
       }
       console.log("[AUTH] User is logged in, skipping modal. Intent:", intent)
@@ -222,12 +250,35 @@ export function AuthModalProvider({ children }: { children: ReactNode }) {
               throw new Error("Invalid character ID")
             }
             
+            const targetUrl = `/s/${encodeURIComponent(characterId)}?scrollTo=${encodeURIComponent(scrollTo)}`
+            
             try {
-              router.push(`/s/${encodeURIComponent(characterId)}?scrollTo=${encodeURIComponent(scrollTo)}`)
+              const currentPath = typeof window !== "undefined" ? window.location.pathname : ""
+              router.push(targetUrl)
+              
+              // Fallback: if navigation doesn't happen within 300ms, use window.location
+              const timeoutId = setTimeout(() => {
+                const newPath = typeof window !== "undefined" ? window.location.pathname : ""
+                if (newPath === currentPath) {
+                  // Navigation didn't happen, use fallback
+                  console.warn("[AUTH] Router push timeout, using window.location fallback")
+                  if (typeof window !== "undefined") {
+                    window.location.href = targetUrl
+                  }
+                }
+              }, 300)
+              
+              // Check after a short delay if navigation happened
+              setTimeout(() => {
+                const newPath = typeof window !== "undefined" ? window.location.pathname : ""
+                if (newPath !== currentPath && newPath.includes(`/s/${encodeURIComponent(characterId)}`)) {
+                  clearTimeout(timeoutId)
+                }
+              }, 100)
             } catch (routerError) {
-              console.error("[AUTH] Router push failed:", routerError)
+              console.error("[AUTH] Router push failed, using fallback:", routerError)
               if (typeof window !== "undefined") {
-                window.location.href = `/s/${encodeURIComponent(characterId)}?scrollTo=${encodeURIComponent(scrollTo)}`
+                window.location.href = targetUrl
               } else {
                 throw new Error("Navigation failed")
               }

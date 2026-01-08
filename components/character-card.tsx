@@ -29,48 +29,80 @@ function getCharacterGradient(name: string): string {
 export function CharacterCard({ character }: CharacterCardProps) {
   const [imageError, setImageError] = useState(false)
   const [isLoaded, setIsLoaded] = useState(false)
+  const [clicked, setClicked] = useState(false) // Temporary visual feedback
   const { isLoggedIn, isLoading } = useAuth()
   const { openModal } = useAuthModal()
   const router = useRouter()
 
-  const handleClick = async (e: React.MouseEvent) => {
+  const handleClick = async (e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault()
     e.stopPropagation()
     
+    // STEP 1: Immediate visual feedback to confirm click fires
+    setClicked(true)
+    setTimeout(() => setClicked(false), 200)
+
     // Validate character ID
-    if (!character?.id) {
-      console.error("[CHARACTER_CARD] Invalid character ID")
+    if (!character?.id || typeof character.id !== "string" || character.id.trim().length === 0) {
+      console.error("[MODEL_CLICK] Invalid character ID:", character?.id)
       return
     }
 
-    const characterId = character.id
-    console.log("[CHARACTER_CARD] Card clicked:", characterId, "isLoading:", isLoading, "isLoggedIn:", isLoggedIn)
+    const characterId = character.id.trim()
+    console.log("MODEL_CLICK", { characterId, isLoggedIn, isLoading })
 
     // If loading, wait briefly then proceed (prevents permanent blocking)
+    // We still want to proceed even if loading, to avoid dead clicks
     if (isLoading) {
-      console.log("[CHARACTER_CARD] Auth state loading, waiting briefly...")
-      // Wait up to 500ms for auth to resolve, then proceed
+      console.log("[MODEL_CLICK] Auth state loading, waiting briefly...")
       await new Promise(resolve => setTimeout(resolve, 100))
-      // Re-check after brief wait - if still loading, proceed anyway to avoid dead clicks
+      // After wait, proceed anyway - openModal will handle storing intent if still loading
     }
+
+    const targetUrl = `/s/${encodeURIComponent(characterId)}?scrollTo=moments`
 
     // If logged in, navigate directly
     if (isLoggedIn) {
-      console.log("[CHARACTER_CARD] User logged in, navigating to character:", characterId)
+      console.log("[MODEL_CLICK] User logged in, navigating to character:", characterId)
+      
       try {
-        router.push(`/s/${characterId}?scrollTo=moments`)
+        const currentPath = typeof window !== "undefined" ? window.location.pathname : ""
+        router.push(targetUrl)
+        
+        // Fallback: if navigation doesn't happen within 300ms, use window.location
+        const timeoutId = setTimeout(() => {
+          const newPath = typeof window !== "undefined" ? window.location.pathname : ""
+          if (newPath === currentPath) {
+            // Navigation didn't happen, use fallback
+            console.warn("[MODEL_CLICK] Router push timeout, using window.location fallback")
+            if (typeof window !== "undefined") {
+              window.location.href = targetUrl
+            }
+          }
+        }, 300)
+        
+        // Store timeout ID to clear if navigation succeeds
+        // Check after a short delay if navigation happened
+        setTimeout(() => {
+          const newPath = typeof window !== "undefined" ? window.location.pathname : ""
+          if (newPath !== currentPath && newPath.includes(`/s/${encodeURIComponent(characterId)}`)) {
+            clearTimeout(timeoutId)
+          }
+        }, 100)
       } catch (error) {
-        console.error("[CHARACTER_CARD] Router push failed, using fallback:", error)
+        console.error("[MODEL_CLICK] Router push failed, using fallback:", error)
         // Fallback to window.location if router fails
         if (typeof window !== "undefined") {
-          window.location.href = `/s/${characterId}?scrollTo=moments`
+          window.location.href = targetUrl
         }
       }
       return
     }
 
-    // If logged out, open auth modal with intent
-    console.log("[CHARACTER_CARD] User logged out, opening auth modal with character intent:", characterId)
+    // If logged out OR still loading, open auth modal with intent
+    // openModal will handle storing intent even if isLoading is true
+    console.log("[MODEL_CLICK] User logged out or loading, opening auth modal with character intent:", characterId)
+    
     try {
       openModal({
         type: "open_character",
@@ -78,10 +110,10 @@ export function CharacterCard({ character }: CharacterCardProps) {
         scrollTo: "moments",
       })
     } catch (error) {
-      console.error("[CHARACTER_CARD] Failed to open auth modal:", error)
+      console.error("[MODEL_CLICK] Failed to open auth modal:", error)
       // Fallback: try direct navigation as last resort
       if (typeof window !== "undefined") {
-        window.location.href = `/s/${characterId}?scrollTo=moments`
+        window.location.href = targetUrl
       }
     }
   }
@@ -89,12 +121,17 @@ export function CharacterCard({ character }: CharacterCardProps) {
   return (
     <div
       onClick={handleClick}
+      onTouchEnd={handleClick}
       className={cn(
         "group relative flex flex-col overflow-hidden rounded-lg bg-[#151515]",
         "transition-all duration-200 ease-out",
         "hover:scale-[1.02] hover:z-10",
         "hover:shadow-xl hover:shadow-violet-500/10",
         "cursor-pointer border border-white/5 hover:border-white/10",
+        "touch-manipulation", // Mobile optimization
+        "pointer-events-auto", // Ensure clicks work
+        // Temporary visual feedback
+        clicked && "ring-4 ring-green-500/60 scale-[1.01]",
       )}
     >
       <div className="relative aspect-[3/4] w-full overflow-hidden">
@@ -111,12 +148,13 @@ export function CharacterCard({ character }: CharacterCardProps) {
             fill
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
             className={cn(
-              "object-cover transition-all duration-300",
+              "object-cover transition-all duration-300 pointer-events-none",
               "group-hover:scale-105",
               isLoaded ? "opacity-100" : "opacity-0",
             )}
             onLoad={() => setIsLoaded(true)}
             onError={() => setImageError(true)}
+            draggable={false}
           />
         ) : (
           <div
